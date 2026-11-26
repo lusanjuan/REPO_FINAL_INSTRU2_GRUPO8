@@ -36,11 +36,12 @@ ETAPAS = ["ESPERANDO", "RELAJA", "CALIBRANDO", "MIDIENDO", "SIN REFERENCIA"]
 # Análisis offline (mismo método que la ESP, para poder compararlos)
 # =============================================================================
 BANDA_HZ = (20, 450)         # banda para MDF y MNF
+NOTCH_ARMONICOS = 8          # notches en 50, 100, 150 ... 400 Hz (igual que la ESP)
 NFFT = 512                   # tramos de Welch
 VENTANA_REP_S = 1.5          # ventana del espectro, centrada en el pico de cada repetición
 VENTANA_DESLIZANTE_S = 1.0   # MDF/MNF continuas a lo largo del registro
 PASO_DESLIZANTE_S = 0.25
-NIVELES_PCT = {"leve": 5, "moderada": 10, "alta": 13}   # caída de la MDF (fatiga_dsp.h)
+NIVELES_PCT = {"leve": 7, "moderada": 12, "alta": 20}   # caída de la MDF (fatiga_dsp.h)
 REPS_REFERENCIA = 3          # la referencia offline = mediana de las primeras 3 repeticiones
 
 CARPETA = os.path.dirname(os.path.abspath(__file__))

@@ -144,7 +144,8 @@ def acondicionar(y):
     BANDA[:] = BANDA_CRUDA_HZ
     for sos in (signal.butter(4, BANDA[0], "highpass", fs=C.FS, output="sos"),
                 signal.butter(4, BANDA[1], "lowpass", fs=C.FS, output="sos"),
-                signal.tf2sos(*signal.iirnotch(50, 10, fs=C.FS))):
+                *[signal.tf2sos(*signal.iirnotch(50 * k, 10 * k, fs=C.FS))     # 50 Hz y armónicos,
+                  for k in range(1, C.NOTCH_ARMONICOS + 1) if 50 * k < BANDA[1]]):  # como la ESP
         x = signal.sosfiltfilt(sos, x)
     x[~ok] = np.nan
     return x, True, saturacion
@@ -275,20 +276,25 @@ def analizar_reps(s, esp):
     return pd.DataFrame(filas)
 
 
-def depurar_reps(s, reps, excluir_post_marca):
+def depurar_reps(s, reps, excluir_post_marca, reposo):
     """Como la ESP y los scripts del grupo: saca de la tendencia las reps incompletas
     (y, en la entrada cruda, las posteriores a la marca de fatiga) y renumera."""
     if reps.empty:
         return reps, {}
     rms_min = DESCARTAR_INCOMPLETAS * reps.rms.median()
-    incompletas = reps.rms < rms_min
+    # Ruidosas (como la ESP): RMS < VALIDA_SNR_MIN × reposo
+    ruidosas = (reps.rms < metodos.VALIDA_SNR_MIN * reposo) if metodos.VALIDA_SNR_MIN > 0 and reposo > 0 \
+        else pd.Series(False, index=reps.index)
+    incompletas = (reps.rms < rms_min) & ~ruidosas
     post = pd.Series(False, index=reps.index)
     if excluir_post_marca and not s["marcas"].empty:
         post = reps.t_s > (s["marcas"].t_s.iloc[0] - s["t0"])
-    quedan = reps[~incompletas & ~post].copy()
+    quedan = reps[~incompletas & ~ruidosas & ~post].copy()
     quedan["rep"] = np.arange(1, len(quedan) + 1)
     return quedan.reset_index(drop=True), {"detectadas": int(len(reps)), "incompletas": int(incompletas.sum()),
-                                           "post_marca": int((post & ~incompletas).sum()), "usadas": int(len(quedan))}
+                                           "ruidosas": int(ruidosas.sum()),
+                                           "post_marca": int((post & ~incompletas & ~ruidosas).sum()),
+                                           "usadas": int(len(quedan))}
 
 
 def tendencia(reps, columna):
@@ -356,7 +362,7 @@ def conclusiones(res):
     if r.get("entrada_cruda"):
         sa = r["saturacion"]
         c.append(f"Entrada cruda del ADC (mediana {sa['mediana_cruda_mV']} mV, rango {sa['min_mV']}–{sa['max_mV']} mV): "
-                 f"se filtró en la PC (pasabanda {BANDA[0]}–{BANDA[1]} Hz + notch 50 Hz, como los scripts del grupo). Muestras en el piso (≤ {SATURACION_BAJA_MV} mV): {sa['piso_pct']} %; "
+                 f"se filtró en la PC (pasabanda {BANDA[0]}–{BANDA[1]} Hz + notch 50 Hz y armónicos, como la ESP). Muestras en el piso (≤ {SATURACION_BAJA_MV} mV): {sa['piso_pct']} %; "
                  f"en el máximo: {sa['techo_pct']} %.")
         if sa["piso_pct"] > 0.05:
             c.append("   ⚠ La señal toca 0 mV: el ADC está saturando abajo. Eso deforma la señal y puede subir la MDF.")
@@ -371,8 +377,11 @@ def conclusiones(res):
     dp = res.get("depuracion") or {}
     if dp:
         c.append(f"   Para la tendencia se usan {dp['usadas']}: se descartaron {dp['incompletas']} incompletas "
-                 f"(RMS < {DESCARTAR_INCOMPLETAS:.0%} de la mediana) y {dp['post_marca']} posteriores a la marca de fatiga. "
+                 f"(RMS < {DESCARTAR_INCOMPLETAS:.0%} de la mediana), {dp['ruidosas']} ruidosas "
+                 f"(RMS < {metodos.VALIDA_SNR_MIN:g} × reposo) y {dp['post_marca']} posteriores a la marca de fatiga. "
                  f"Banda {BANDA[0]}–{BANDA[1]} Hz.")
+        if dp["detectadas"] and dp["ruidosas"] > dp["detectadas"] / 2:
+            c.append("   ⚠ Más de la mitad de las repeticiones son ruidosas: revisar electrodos, cables y ruido de la electrónica.")
     if res.get("validacion"):
         v = res["validacion"]
         c.append(f"MDF ESP vs PC: diferencia media {v['mae_hz']} Hz (máxima {v['max_hz']} Hz) en {v['n']} repeticiones.")
@@ -555,7 +564,14 @@ def graficar_diapo(s, reps, serie, salida):
     ax.set_ylabel("MDF  (% de la referencia)", fontsize=18)
     ax.tick_params(labelsize=15)
     fuerte = C.titulo_fuerte()
-    fig.text(0.07, 0.86, f"LA MDF CAYÓ {t['caida_pct']:.0f} % EN {len(i)} REPETICIONES", fontsize=50,
+    c = t["caida_pct"]
+    if not t["significativa"]:
+        titulo = f"LA MDF NO CAMBIÓ EN {len(i)} REPETICIONES"
+    elif c > 0:
+        titulo = f"LA MDF CAYÓ {c:.0f} % EN {len(i)} REPETICIONES"
+    else:
+        titulo = f"LA MDF SUBIÓ {-c:.0f} % EN {len(i)} REPETICIONES"
+    fig.text(0.07, 0.86, titulo, fontsize=50,
              color=C.CLARO, **fuerte)
     m = s["meta"]
     detalle = " · ".join(x for x in [m.get("persona"), m.get("ejercicio"),
@@ -608,7 +624,8 @@ def analizar(carpeta, graficos=True):
         comparacion = (car, tabla, curvas, info)
 
     # Igual que la ESP y los scripts del grupo: todas se cuentan, pero solo las válidas entran en la tendencia
-    reps, res["depuracion"] = depurar_reps(s, reps, excluir_post_marca=EXCLUIR_POST_MARCA and not hay_esp)
+    reps, res["depuracion"] = depurar_reps(s, reps, excluir_post_marca=EXCLUIR_POST_MARCA and not hay_esp,
+                                           reposo=reposo)
 
     res["series"] = []
     for numero, r in (reps.groupby("serie") if len(reps) else []):

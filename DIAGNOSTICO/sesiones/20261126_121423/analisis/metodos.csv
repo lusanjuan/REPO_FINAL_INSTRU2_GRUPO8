@@ -1,0 +1,25 @@
+metodo,nombre,senal,reps_usadas,reps_total,caida_final_pct,nivel_final,rep_leve,t_leve_s,rep_moderada,t_moderada_s,rep_alta,t_alta_s,dispersion_pct
+M0,actual (ESP),MDF,17,19,-5.6,sin,,,,,,,8.49
+M0,actual (ESP),MNF,17,19,0.5,sin,,,,,,,5.86
+M0,actual (ESP),MDF+MNF,17,19,-5.6,sin,,,,,,,8.49
+M0,actual (ESP),MDF o MNF,17,19,0.7,sin,,,,,,,8.49
+M1,+ Theil-Sen,MDF,17,19,-6.8,sin,,,,,,,8.45
+M1,+ Theil-Sen,MNF,17,19,0.5,sin,,,,,,,5.49
+M1,+ Theil-Sen,MDF+MNF,17,19,-6.8,sin,,,,,,,8.45
+M1,+ Theil-Sen,MDF o MNF,17,19,0.7,sin,,,,,,,8.45
+M2,+ ref de la recta,MDF,17,19,-12.6,sin,,,,,,,8.45
+M2,+ ref de la recta,MNF,17,19,-3.8,leve,6.0,35.9,,,,,5.49
+M2,+ ref de la recta,MDF+MNF,17,19,-12.6,sin,,,,,,,8.45
+M2,+ ref de la recta,MDF o MNF,17,19,-5.4,leve,6.0,35.9,,,,,8.45
+M3,+ calidad,MDF,17,19,-12.6,sin,,,,,,,8.45
+M3,+ calidad,MNF,17,19,-3.8,leve,6.0,35.9,,,,,5.49
+M3,+ calidad,MDF+MNF,17,19,-12.6,sin,,,,,,,8.45
+M3,+ calidad,MDF o MNF,17,19,-5.4,leve,6.0,35.9,,,,,8.45
+M4,+ espectro limpio,MDF,17,19,-7.7,sin,,,,,,,6.07
+M4,+ espectro limpio,MNF,17,19,-3.1,leve,6.0,35.9,,,,,5.53
+M4,+ espectro limpio,MDF+MNF,17,19,-7.7,sin,,,,,,,6.07
+M4,+ espectro limpio,MDF o MNF,17,19,-4.4,leve,6.0,35.9,,,,,6.07
+M5,+ JASA (RMS),MDF,17,19,-7.7,sin,,,,,,,6.07
+M5,+ JASA (RMS),MNF,17,19,-3.1,sin,,,,,,,5.53
+M5,+ JASA (RMS),MDF+MNF,17,19,-7.7,sin,,,,,,,6.07
+M5,+ JASA (RMS),MDF o MNF,17,19,-4.4,sin,,,,,,,6.07

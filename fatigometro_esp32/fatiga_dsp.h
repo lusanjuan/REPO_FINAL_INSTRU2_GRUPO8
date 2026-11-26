@@ -36,7 +36,8 @@
 //                   repeticiones se siguen contando.
 //
 // Procesamiento de cada muestra (igual al análisis en Python del grupo):
-//   1. Filtro pasabanda 20-450 Hz (Butterworth orden 4) + notch 50 Hz.
+//   1. Filtro pasabanda 20-450 Hz (Butterworth orden 4) + notch 50 Hz y sus
+//      armónicos (100, 150 ... 400 Hz; NOTCH_ARMONICOS).
 //   2. Recorte de picos (ECG, golpes de cable): cada muestra se limita a
 //      ±RECORTE_K veces la escala de la señal (mediana de la RMS de los últimos
 //      10 bloques de 50 ms). Un pico ocupa 1 bloque y no mueve la mediana.
@@ -64,7 +65,10 @@
 //   referencia y en la recta de fatiga. Una repetición NO es válida si:
 //     - su RMS es menor que VALIDA_RMS_MIN veces la mediana de las RMS de la
 //       serie (acomodar el brazo, una repetición a medias, la última al soltar), o
-//     - saturó el ADC (VALIDA_SIN_SATURAR).
+//     - saturó el ADC (VALIDA_SIN_SATURAR), o
+//     - es "ruidosa": su RMS es menor que VALIDA_SNR_MIN veces el reposo (el ruido
+//       de fondo pesa demasiado en su espectro). Con AVISO_RUIDO_REPS ruidosas
+//       seguidas, la ESP avisa que hay que revisar los electrodos.
 
 #pragma once
 #include <math.h>
@@ -82,10 +86,15 @@ namespace fatiga {
 constexpr float FS                 = 2000.0f;  // frecuencia de muestreo [Hz] (igual que el .ino)
 constexpr float FILTRO_F_BAJA      = 20.0f;    // pasaaltos [Hz] (20 = scripts del grupo; 30 saca más ECG
                                                //   pero también parte del sEMG, que en algunas personas está en 30-60 Hz)
-constexpr float FILTRO_F_ALTA      = 450.0f;   // pasabajos [Hz]
+constexpr float FILTRO_F_ALTA      = 120.0f;   // pasabajos [Hz]
 constexpr bool  NOTCH_ACTIVO       = true;     // notch para la interferencia de la red
 constexpr float NOTCH_F            = 50.0f;    // [Hz]
 constexpr float NOTCH_Q            = 10.0f;    // más alto = notch más angosto
+constexpr int   NOTCH_ARMONICOS    = 10;        // cuántos notches: 50, 100, 150 ... 400 Hz.
+                                               //   Los armónicos de la red (sobre todo 150 Hz) entran cuando
+                                               //   un electrodo hace mal contacto. 1 = solo 50 Hz (como antes).
+                                               //   El armónico k usa Q = NOTCH_Q·k: todos sacan la misma
+                                               //   franja de 5 Hz, así se pierde poco del sEMG.
 constexpr float FILTRO_ESPERA_S    = 1.0f;     // tiempo para que se asienten los filtros al prender
 
 // ---- Recorte de picos (artefactos) ----
@@ -122,6 +131,10 @@ constexpr float SAT_FRACCION_MAX   = 0.02f;    // más del 2 % de muestras satur
 // ---- Repetición válida (para la referencia y la fatiga; el conteo no cambia) ----
 constexpr float VALIDA_RMS_MIN       = 0.70f;  // RMS >= 70 % de la mediana de la serie
 constexpr bool  VALIDA_SIN_SATURAR   = true;   // las repeticiones saturadas no entran
+constexpr float VALIDA_SNR_MIN       = 2.0f;   // la RMS de la rep tiene que ser >= 2 × el reposo
+                                               //   (si no, es "ruidosa": el ruido pesa demasiado en
+                                               //   su espectro y la MDF no es confiable). 0 = no se usa
+constexpr int   AVISO_RUIDO_REPS     = 3;      // tantas reps ruidosas seguidas -> aviso de revisar electrodos
 
 // ---- Referencia (calibración) ----
 constexpr int   REF_REPS             = 3;      // repeticiones válidas que forman la referencia
@@ -137,9 +150,9 @@ constexpr float REF_CV_MDF_MAX       = 0.08f;  // dispersión de las MDF (desví
 constexpr bool  REF_MANTENER_ENTRE_SERIES = true;  // la referencia de la serie 1 vale para toda la sesión
 
 // ---- Fatiga ----
-constexpr float FATIGA_LEVE_PCT        = 5.0f;   // caída de la MDF respecto de la referencia [%]
-constexpr float FATIGA_MODERADA_PCT    = 10.0f;
-constexpr float FATIGA_ALTA_PCT        = 13.0f;
+constexpr float FATIGA_LEVE_PCT        = 7.0f;   // caída de la MDF respecto de la referencia [%]
+constexpr float FATIGA_MODERADA_PCT    = 12.0f;
+constexpr float FATIGA_ALTA_PCT        = 20.0f;
 constexpr bool  FATIGA_USAR_RECTA      = true;   // MDF actual = recta de toda la serie
 constexpr bool  FATIGA_RECTA_ROBUSTA   = true;   // recta de Theil-Sen (mediana de las pendientes entre
                                                  //   pares de reps): una rep rara casi no la mueve.
@@ -175,6 +188,7 @@ constexpr int BLOQUES_SAT       = BUF_N / ENV_PASO;                       // 80
 static_assert((1 << LOG2_NFFT) == NFFT, "NFFT tiene que ser 2^LOG2_NFFT");
 static_assert(REF_REPS_OBSERVAR >= REF_REPS, "REF_REPS_OBSERVAR tiene que ser >= REF_REPS");
 static_assert(REF_INTENTOS_MAX >= REF_REPS_OBSERVAR, "REF_INTENTOS_MAX tiene que ser >= REF_REPS_OBSERVAR");
+static_assert(NOTCH_ARMONICOS >= 1, "NOTCH_ARMONICOS tiene que ser >= 1");
 static_assert(REF_REPS <= 16, "REF_REPS: la mediana corta admite hasta 16 valores");
 static_assert(MUESTRAS_ESPECTRO + ENV_PASO * BLOQUES_ENV < BUF_N, "el buffer no alcanza para la ventana");
 
@@ -225,6 +239,8 @@ struct Resultado {
   bool     repNueva;        // este resultado trae una repetición nueva
   bool     saturada;        // esa repetición saturó el ADC
   bool     repValida;       // esa repetición entra en la referencia / fatiga
+  bool     repRuidosa;      // esa repetición es ruidosa (RMS < VALIDA_SNR_MIN × reposo)
+  bool     senalRuidosa;    // AVISO_RUIDO_REPS reps ruidosas seguidas: revisar electrodos
   bool     contraido;       // la envolvente está por encima del umbral de reposo
   const char *evento;       // qué pasó (para el Serial); nullptr si es un resultado periódico
 };
@@ -357,7 +373,7 @@ private:
   struct Repeticion { float mdf, mnf, rms, t; bool saturada; };   // t = tiempo del pico [s]
 
   // ---- Filtros y FFT ----
-  Biquad filtros_[5];
+  Biquad filtros_[4 + NOTCH_ARMONICOS];
   int nFiltros_ = 0;
   bool primeraMuestra_ = true;
   float dc0_ = 0;                          // continua que se resta (primera muestra)
@@ -404,6 +420,8 @@ private:
   Repeticion serie_[MAX_REPS_SERIE];      // todas las repeticiones de la serie
   int nRepsSerie_ = 0;
   bool ultimaValida_ = false;
+  bool ultimaRuidosa_ = false;
+  int ruidosasSeguidas_ = 0;
   int intentosCalibracion_ = 0;
 
   // Fatiga
@@ -446,7 +464,10 @@ private:
     filtros_[nFiltros_++].disenar(Biquad::PASAALTOS, FILTRO_F_BAJA, q2, FS);
     filtros_[nFiltros_++].disenar(Biquad::PASABAJOS, FILTRO_F_ALTA, q1, FS);
     filtros_[nFiltros_++].disenar(Biquad::PASABAJOS, FILTRO_F_ALTA, q2, FS);
-    if (NOTCH_ACTIVO) filtros_[nFiltros_++].disenar(Biquad::NOTCH, NOTCH_F, NOTCH_Q, FS);
+    if (NOTCH_ACTIVO)
+      for (int k = 1; k <= NOTCH_ARMONICOS; k++)
+        if (k * NOTCH_F < FILTRO_F_ALTA)
+          filtros_[nFiltros_++].disenar(Biquad::NOTCH, k * NOTCH_F, NOTCH_Q * k, FS);
   }
 
   // Tablas que la FFT usa siempre: se calculan una sola vez
@@ -471,6 +492,7 @@ private:
     reps_ = 0; repNueva_ = false;
     memset(&ultima_, 0, sizeof(ultima_));
     nRepsSerie_ = 0; ultimaValida_ = false; intentosCalibracion_ = 0;
+    ultimaRuidosa_ = false; ruidosasSeguidas_ = 0;
     nSerie_ = 0;                             // mdfRef_ NO se borra: es de la sesión
     mdfActual_ = 0; caida_ = 0; pendiente_ = 0; repsSobreUmbral_ = 0;
     mnfActual_ = 0; caidaMdf_ = 0; caidaMnf_ = 0;
@@ -606,6 +628,8 @@ private:
 
     if (nRepsSerie_ < MAX_REPS_SERIE) serie_[nRepsSerie_++] = r;
     ultimaValida_ = esValida(r);
+    ultimaRuidosa_ = esRuidosa(r);
+    ruidosasSeguidas_ = ultimaRuidosa_ ? ruidosasSeguidas_ + 1 : 0;
 
     switch (etapa_) {
       case Etapa::CALIBRANDO:
@@ -621,9 +645,11 @@ private:
           actualizarFatiga();
           evento_ = "repeticion";
         } else {
-          evento_ = "repeticion contada (incompleta o saturada: no entra en la fatiga)";
+          evento_ = motivoInvalida(r);
         }
     }
+    if (AVISO_RUIDO_REPS > 0 && ruidosasSeguidas_ >= AVISO_RUIDO_REPS)
+      evento_ = "senal ruidosa: revisa los electrodos (las reps se cuentan pero no miden fatiga)";
     return true;
   }
 
@@ -670,9 +696,21 @@ private:
     return (n % 2) ? t[n / 2] : 0.5f * (t[n / 2 - 1] + t[n / 2]);
   }
 
+  bool esRuidosa(const Repeticion &r) const {
+    return VALIDA_SNR_MIN > 0 && reposo_ > 0 && r.rms < VALIDA_SNR_MIN * reposo_;
+  }
+
   bool esValida(const Repeticion &r) const {
     if (VALIDA_SIN_SATURAR && r.saturada) return false;
+    if (esRuidosa(r)) return false;
     return r.rms >= VALIDA_RMS_MIN * rmsMedianaSerie();
+  }
+
+  // Por qué una repetición no entra en la fatiga (para el monitor serie)
+  const char *motivoInvalida(const Repeticion &r) const {
+    if (VALIDA_SIN_SATURAR && r.saturada) return "repeticion contada (saturada: no entra en la fatiga)";
+    if (esRuidosa(r)) return "repeticion contada (ruidosa: no entra en la fatiga)";
+    return "repeticion contada (incompleta: no entra en la fatiga)";
   }
 
   // ===========================================================================
@@ -944,6 +982,8 @@ private:
     r.repNueva = repNueva_;
     r.saturada = repNueva_ && ultima_.saturada;
     r.repValida = repNueva_ && ultimaValida_;
+    r.repRuidosa = repNueva_ && ultimaRuidosa_;
+    r.senalRuidosa = AVISO_RUIDO_REPS > 0 && ruidosasSeguidas_ >= AVISO_RUIDO_REPS;
     r.contraido = reposo_ > 0 && envolvente_ > REP_FACTOR_REPOSO * reposo_;
     r.evento = evento_;
     evento_ = nullptr;
