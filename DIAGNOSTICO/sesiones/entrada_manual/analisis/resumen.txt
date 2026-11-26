@@ -1,0 +1,11 @@
+Sesión entrada_manual
+Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 95.2 s.
+Ruido de base (envolvente, percentil 10): 31.1 mV; contracción (percentil 95): 209.2 mV; SNR 16.6 dB.
+Entrada cruda del ADC (mediana 660.0 mV, rango 0.0–1773.0 mV): se filtró en la PC (pasabanda 20–450 Hz + notch 50 Hz, como los scripts del grupo). Muestras en el piso (≤ 10 mV): 0.054 %; en el máximo: 0.001 %.
+   ⚠ La señal toca 0 mV: el ADC está saturando abajo. Eso deforma la señal y puede subir la MDF.
+Repeticiones contadas en la PC: 27 (no hay datos de la ESP para comparar).
+   Para el análisis se usan 24: se descartaron 3 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.
+Serie 1 (24 reps): MDF 55.64 Hz → pendiente -0.584 Hz/rep (r = -0.633, p = 0.000908, significativa); caída estimada 27.8 % → nivel 'alta'. 
+   MNF: caída 18.3 % (p = 2.8e-05).  RMS: cambio +80.6 % (p = 1.33e-07).
+Ventanas de 1 s (35.8 s con contracción): MDF 48.6 → 42.1 Hz, caída 13.4 %, pendiente -0.0718 Hz/s (r = -0.262, p = 0.00154).
+Marca 'fatiga (usuario)' en 93.4 s: cerca de la rep 24.

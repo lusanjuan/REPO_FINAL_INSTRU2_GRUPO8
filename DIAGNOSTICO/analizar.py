@@ -39,6 +39,13 @@ PICOS_FACTOR_REPOSO = 2.0     # el pico tiene que superar 2 × el reposo (igual 
 PICOS_PROMINENCIA = 0.30      # y sobresalir 30 % de su altura (igual que REP_CAIDA_PICO)
 COINCIDENCIA_S = 0.6          # dos picos (ESP y PC) son el mismo si están a menos de 0,6 s
 P_SIGNIFICATIVO = 0.05
+CRUDA_SI_MEDIANA_MAYOR_A_MV = 50   # si la señal no está centrada en 0, es la cruda del ADC: se filtra en la PC
+SATURACION_BAJA_MV = 10            # muestras crudas por debajo de esto = el ADC tocó el piso
+# Entrada cruda (CSV): mismos criterios que los scripts del grupo (analisis_repeticiones.py)
+BANDA_CRUDA_HZ = (20, 450)         # filtro y banda de MDF/MNF para la señal cruda (la ESP usa 30–450)
+DESCARTAR_INCOMPLETAS = 0.7        # descarta reps con RMS < 70 % de la mediana (acomodar el brazo, reps a medias)
+EXCLUIR_POST_MARCA = True          # las reps después de la marca de fatiga del usuario no entran en la tendencia
+BANDA = list(C.BANDA_HZ)           # banda en uso (se cambia a BANDA_CRUDA_HZ si la entrada es cruda)
 DPI = 110
 
 
@@ -65,24 +72,79 @@ def leer_csv(carpeta, nombre):
         return pd.DataFrame()
 
 
-def cargar(carpeta):
-    s = {"carpeta": carpeta, "nombre": os.path.basename(carpeta)}
-    meta = os.path.join(carpeta, "meta.json")
-    s["meta"] = json.load(open(meta, encoding="utf-8")) if os.path.exists(meta) else {}
-    senal = leer_csv(carpeta, "senal.csv").drop_duplicates("n").sort_values("n")
+def cargar(ruta):
+    """Acepta una carpeta de grabar.py o un CSV suelto (columnas muestra, t_s, mV y opcionales usuario, sexo, fatiga)."""
+    if os.path.isfile(ruta):
+        carpeta = os.path.splitext(ruta)[0]                     # los resultados van a una carpeta con el mismo nombre
+        os.makedirs(carpeta, exist_ok=True)
+        senal = pd.read_csv(ruta)
+        meta = {"archivo": os.path.basename(ruta)}
+        detector = resultados = pd.DataFrame()
+        marcas = pd.DataFrame(columns=["t_s", "tipo"])
+    else:
+        carpeta = ruta
+        meta_ruta = os.path.join(carpeta, "meta.json")
+        meta = json.load(open(meta_ruta, encoding="utf-8")) if os.path.exists(meta_ruta) else {}
+        senal = leer_csv(carpeta, "senal.csv")
+        if senal.empty:                                         # carpeta con un CSV de otro nombre
+            otros = [f for f in sorted(glob.glob(os.path.join(carpeta, "*.csv")))
+                     if os.path.basename(f) not in ("detector.csv", "resultados.csv", "marcas.csv")]
+            if otros:
+                senal = pd.read_csv(otros[0])
+                print(f"Usando {os.path.basename(otros[0])}")
+        detector, resultados, marcas = (leer_csv(carpeta, n) for n in ("detector.csv", "resultados.csv", "marcas.csv"))
     if senal.empty:
-        sys.exit("La sesión no tiene señal (senal.csv vacío).")
+        sys.exit("La sesión no tiene señal.")
+    # Formatos aceptados: n o muestra (índice), t_s, mV; opcionales usuario, sexo, modo, fatiga
+    senal.columns = [str(c).strip() for c in senal.columns]
+    senal = senal.rename(columns={"muestra": "n"})
+    if "n" not in senal:
+        senal["n"] = np.round(senal.t_s * C.FS).astype(int)
+    for col, clave in (("usuario", "persona"), ("sexo", "sexo"), ("modo", "modo")):
+        if col in senal and not meta.get(clave):
+            meta[clave] = str(senal[col].iloc[0])
+    senal = senal.drop_duplicates("n").sort_values("n")
+    s = {"carpeta": carpeta, "nombre": os.path.basename(carpeta), "meta": meta,
+         "detector": detector, "resultados": resultados, "marcas": marcas}
     # Señal continua: las muestras que faltan quedan como NaN
     n0, n1 = int(senal.n.iloc[0]), int(senal.n.iloc[-1])
     y = np.full(n1 - n0 + 1, np.nan)
     y[senal.n.values - n0] = senal.mV.values
-    s["n0"], s["y"] = n0, y
-    s["t"] = (n0 + np.arange(len(y))) / C.FS          # tiempo de la ESP [s]
+    s["n0"] = n0
+    s["t"] = (n0 + np.arange(len(y))) / C.FS
     s["t0"] = s["t"][0]
-    s["detector"] = leer_csv(carpeta, "detector.csv")
-    s["resultados"] = leer_csv(carpeta, "resultados.csv")
-    s["marcas"] = leer_csv(carpeta, "marcas.csv")
+    # Fatiga indicada por el usuario (columna 0/1): franjas y marcas donde empieza
+    s["fatiga_usuario"] = None
+    if "fatiga" in senal:
+        f = np.zeros(len(y))
+        f[senal.n.values - n0] = senal.fatiga.values
+        s["fatiga_usuario"] = f > 0
+        inicios = np.where(np.diff(np.r_[0, (f > 0).astype(int)]) == 1)[0]
+        if len(inicios):
+            s["marcas"] = pd.DataFrame({"t_s": s["t"][inicios], "tipo": "fatiga (usuario)"})
+    s["y"], s["cruda"], s["saturacion"] = acondicionar(y)
     return s
+
+
+def acondicionar(y):
+    """Si la señal es la cruda del ADC (centrada en ~650 mV), le aplica los filtros de la ESP:
+    pasaaltos y pasabajos Butterworth de orden 4 (30 y 450 Hz) y notch de 50 Hz, sin desfase."""
+    mediana = float(np.nanmedian(y))
+    if abs(mediana) < CRUDA_SI_MEDIANA_MAYOR_A_MV:
+        return y, False, None
+    ok = np.isfinite(y)
+    saturacion = {"mediana_cruda_mV": round(mediana, 1),
+                  "min_mV": round(float(np.nanmin(y)), 1), "max_mV": round(float(np.nanmax(y)), 1),
+                  "piso_pct": round(100 * float(np.mean(y[ok] <= SATURACION_BAJA_MV)), 3),
+                  "techo_pct": round(100 * float(np.mean(y[ok] >= np.nanmax(y) - 2)), 3)}
+    x = np.where(ok, y, mediana) - mediana
+    BANDA[:] = BANDA_CRUDA_HZ
+    for sos in (signal.butter(4, BANDA[0], "highpass", fs=C.FS, output="sos"),
+                signal.butter(4, BANDA[1], "lowpass", fs=C.FS, output="sos"),
+                signal.tf2sos(*signal.iirnotch(50, 10, fs=C.FS))):
+        x = signal.sosfiltfilt(sos, x)
+    x[~ok] = np.nan
+    return x, True, saturacion
 
 
 # =============================================================================
@@ -100,7 +162,7 @@ def espectro(x):
     if len(x) < C.NFFT or np.isnan(x).any():
         return None
     f, p = signal.welch(x - x.mean(), C.FS, window="hann", nperseg=C.NFFT, noverlap=C.NFFT // 2)
-    banda = (f >= C.BANDA_HZ[0]) & (f <= C.BANDA_HZ[1])
+    banda = (f >= BANDA[0]) & (f <= BANDA[1])
     fb, pb = f[banda], p[banda]
     acumulada = np.cumsum(pb)
     if acumulada[-1] <= 0:
@@ -166,7 +228,7 @@ def analizar_ruido(s, env):
     return {"ruido_base_mV": round(base, 1), "envolvente_p95_mV": round(alto, 1),
             "snr_dB": round(20 * np.log10(alto / base), 1) if base > 0 else None,
             "reposo_esp_mV": round(reposo_esp, 1) if reposo_esp else None,
-            "recortado_pct": recortado_pct}
+            "recortado_pct": recortado_pct, "entrada_cruda": s["cruda"], "saturacion": s["saturacion"]}
 
 
 def reps_esp(s):
@@ -208,6 +270,22 @@ def analizar_reps(s, esp):
                       "mdf": e["mdf"] if e else np.nan, "mnf": e["mnf"] if e else np.nan,
                       "rms": e["rms"] if e else np.nan, "_psd": e["p"] if e else None})
     return pd.DataFrame(filas)
+
+
+def depurar_reps(s, reps):
+    """Solo para la entrada cruda (sin ESP): como los scripts del grupo, saca las reps incompletas
+    y las posteriores a la marca de fatiga, y renumera."""
+    if reps.empty:
+        return reps, {}
+    rms_min = DESCARTAR_INCOMPLETAS * reps.rms.median()
+    incompletas = reps.rms < rms_min
+    post = pd.Series(False, index=reps.index)
+    if EXCLUIR_POST_MARCA and not s["marcas"].empty:
+        post = reps.t_s > (s["marcas"].t_s.iloc[0] - s["t0"])
+    quedan = reps[~incompletas & ~post].copy()
+    quedan["rep"] = np.arange(1, len(quedan) + 1)
+    return quedan.reset_index(drop=True), {"detectadas": int(len(reps)), "incompletas": int(incompletas.sum()),
+                                           "post_marca": int((post & ~incompletas).sum()), "usadas": int(len(quedan))}
 
 
 def tendencia(reps, columna):
@@ -272,11 +350,26 @@ def conclusiones(res):
     r = res["ruido"]
     c.append(f"Ruido de base (envolvente, percentil 10): {r['ruido_base_mV']} mV; "
              f"contracción (percentil 95): {r['envolvente_p95_mV']} mV; SNR {r['snr_dB']} dB.")
+    if r.get("entrada_cruda"):
+        sa = r["saturacion"]
+        c.append(f"Entrada cruda del ADC (mediana {sa['mediana_cruda_mV']} mV, rango {sa['min_mV']}–{sa['max_mV']} mV): "
+                 f"se filtró en la PC (pasabanda {BANDA[0]}–{BANDA[1]} Hz + notch 50 Hz, como los scripts del grupo). Muestras en el piso (≤ {SATURACION_BAJA_MV} mV): {sa['piso_pct']} %; "
+                 f"en el máximo: {sa['techo_pct']} %.")
+        if sa["piso_pct"] > 0.05:
+            c.append("   ⚠ La señal toca 0 mV: el ADC está saturando abajo. Eso deforma la señal y puede subir la MDF.")
     if r["recortado_pct"] is not None:
         c.append(f"El recorte de picos tocó el {r['recortado_pct']} % de las muestras.")
     k = res["conteo"]
-    c.append(f"Repeticiones: la ESP contó {k['esp']}, el conteo independiente {k['pc']} "
-             f"({k['coinciden']} coinciden a menos de {COINCIDENCIA_S} s).")
+    if k["esp"] is None:
+        c.append(f"Repeticiones contadas en la PC: {k['pc']} (no hay datos de la ESP para comparar).")
+        dp = res.get("depuracion") or {}
+        if dp:
+            c.append(f"   Para el análisis se usan {dp['usadas']}: se descartaron {dp['incompletas']} incompletas "
+                     f"(RMS < {DESCARTAR_INCOMPLETAS:.0%} de la mediana) y {dp['post_marca']} posteriores a la marca de fatiga. "
+                     f"Banda {BANDA[0]}–{BANDA[1]} Hz.")
+    else:
+        c.append(f"Repeticiones: la ESP contó {k['esp']}, el conteo independiente {k['pc']} "
+                 f"({k['coinciden']} coinciden a menos de {COINCIDENCIA_S} s).")
     if res.get("validacion"):
         v = res["validacion"]
         c.append(f"MDF ESP vs PC: diferencia media {v['mae_hz']} Hz (máxima {v['max_hz']} Hz) en {v['n']} repeticiones.")
@@ -287,7 +380,7 @@ def conclusiones(res):
             sig = "significativa" if m["significativa"] else "NO significativa"
             c.append(pre + f"MDF {m['ref']} Hz → pendiente {m['pendiente_por_rep']} Hz/rep (r = {m['r']}, "
                            f"p = {m['p']}, {sig}); caída estimada {m['caida_pct']} % → nivel '{nivel_por_caida(m['caida_pct'])}'. "
-                           f"La ESP terminó en '{serie['estado_final_esp']}' ({serie['caida_final_esp']} %).")
+                           + (f"La ESP terminó en '{serie['estado_final_esp']}' ({serie['caida_final_esp']} %)." if serie['estado_final_esp'] != "—" else ""))
         else:
             c.append(pre + "pocas repeticiones para calcular una tendencia.")
         if serie.get("mnf"):
@@ -298,7 +391,8 @@ def conclusiones(res):
         c.append(f"Ventanas de 1 s ({t['segundos_activos']} s con contracción): MDF {t['mdf_inicio']} → {t['mdf_final']} Hz, "
                  f"caída {t['caida_pct']} %, pendiente {t['pendiente_hz_por_s']} Hz/s (r = {t['r']}, p = {t['p']}).")
     for m in res["marcas"]:
-        c.append(f"Marca '{m['tipo']}' en {m['t_s']} s: cerca de la rep {m['rep_cercana']}; la ESP decía '{m['estado_esp']}'.")
+        c.append(f"Marca '{m['tipo']}' en {m['t_s']} s: cerca de la rep {m['rep_cercana']}"
+                 + (f"; la ESP decía '{m['estado_esp']}'." if m['estado_esp'] != "—" else "."))
     return c
 
 
@@ -317,7 +411,11 @@ def graficar_senal(s, env, reps, picos_pc, estados, ventanas, salida):
     t = s["t"] - s["t0"]
     d = 4
     fig, (a1, a2) = plt.subplots(2, 1, figsize=(15, 7.5), sharex=True, gridspec_kw={"height_ratios": [2.2, 1]})
-    a1.plot(t[::d], s["y"][::d], lw=0.4, color=C.GRIS, alpha=0.8, label="señal procesada (ESP)")
+    nombre_senal = "señal filtrada en la PC (entrada cruda)" if s["cruda"] else "señal procesada (ESP)"
+    a1.plot(t[::d], s["y"][::d], lw=0.4, color=C.GRIS, alpha=0.8, label=nombre_senal)
+    if s["fatiga_usuario"] is not None and s["fatiga_usuario"].any():
+        a1.fill_between(t[::d], 0, 1, where=s["fatiga_usuario"][::d], transform=a1.get_xaxis_transform(),
+                        color=C.NARANJA, alpha=0.12, lw=0, label="fatiga indicada por el usuario")
     a1.plot(t[::d], env[::d], lw=2, color=C.LIMA, label="envolvente RMS 0,5 s (PC)")
     det = s["detector"]
     if not det.empty:
@@ -338,7 +436,7 @@ def graficar_senal(s, env, reps, picos_pc, estados, ventanas, salida):
     a1.set_ylabel("mV")
     a1.set_title(f"Señal y repeticiones · {s['nombre']}")
     manejadores, _ = a1.get_legend_handles_labels()
-    manejadores += [plt.Line2D([], [], color=C.NARANJA, lw=1.5, label="rep ESP")]
+    manejadores += [plt.Line2D([], [], color=C.NARANJA, lw=1.5, label="repetición" + ("" if s["cruda"] else " (ESP)"))]
     usados = list(dict.fromkeys(estados.estado)) if len(estados) else []
     manejadores += [Patch(color=C.COLOR_ESTADO.get(e, C.GRIS), label=C.TEXTO_ESTADO.get(e, e).lower()) for e in usados]
     a1.legend(handles=manejadores, loc="upper left", ncol=4, fontsize=8)
@@ -392,7 +490,7 @@ def graficar_espectros(reps, salida):
     fig, ax = plt.subplots(figsize=(10, 5))
     for grupo, color, nombre in ((validas.head(k), C.GRIS, f"primeras {k}"), (validas.tail(k), C.LIMA, f"últimas {k}")):
         p = np.mean(np.vstack(grupo._psd.values), axis=0)
-        banda = (f >= C.BANDA_HZ[0]) & (f <= C.BANDA_HZ[1])
+        banda = (f >= BANDA[0]) & (f <= BANDA[1])
         p = p / p[banda].max()
         ax.plot(f, p, color=color, lw=2, label=f"{nombre} reps  (MDF {grupo.mdf.mean():.1f} Hz)")
         ax.axvline(grupo.mdf.mean(), color=color, lw=1, ls="--")
@@ -472,18 +570,27 @@ def graficar_diapo(s, reps, serie, salida):
 # =============================================================================
 def analizar(carpeta, graficos=True):
     s = cargar(carpeta)
-    salida = os.path.join(carpeta, "analisis")
+    salida = os.path.join(s["carpeta"], "analisis")
     os.makedirs(salida, exist_ok=True)
     env = envolvente_rms(s["y"])
     res = {"sesion": s["nombre"], "meta": s["meta"], "enlace": analizar_enlace(s), "ruido": analizar_ruido(s, env)}
     reposo = res["ruido"]["reposo_esp_mV"] or res["ruido"]["ruido_base_mV"]
 
     esp = reps_esp(s)
-    reps = analizar_reps(s, esp)
     estados = estados_esp(s)
     picos_pc = contar_picos(s, env, reposo, estados)
+    hay_esp = len(esp) > 0
+    if not hay_esp and len(picos_pc):
+        # Sin datos de la ESP: las repeticiones son las que cuenta la PC
+        esp = pd.DataFrame({"t": picos_pc, "serie": 1, "reps": np.arange(1, len(picos_pc) + 1),
+                            "mdf": np.nan, "rms": np.nan, "estado": "", "fatiga": np.nan, "ref": np.nan})
+    reps = analizar_reps(s, esp)
+    res["depuracion"] = {}
+    if not hay_esp:
+        reps, res["depuracion"] = depurar_reps(s, reps)
     coinciden = sum(np.min(np.abs(picos_pc - t)) < COINCIDENCIA_S for t in esp.t) if len(picos_pc) and len(esp) else 0
-    res["conteo"] = {"esp": int(len(esp)), "pc": int(len(picos_pc)), "coinciden": int(coinciden)}
+    res["conteo"] = {"esp": int(len(esp)) if hay_esp else None, "pc": int(len(picos_pc)),
+                     "coinciden": int(coinciden) if hay_esp else None}
     v = reps.dropna(subset=["mdf", "mdf_esp"]) if len(reps) else reps
     if len(v):
         dif = np.abs(v.mdf - v.mdf_esp)
@@ -492,7 +599,8 @@ def analizar(carpeta, graficos=True):
     res["series"] = []
     for numero, r in (reps.groupby("serie") if len(reps) else []):
         r = r.reset_index(drop=True)
-        ultimo = s["resultados"][s["resultados"].serie == numero].iloc[-1]
+        res_serie = s["resultados"][s["resultados"].serie == numero] if hay_esp else pd.DataFrame()
+        ultimo = res_serie.iloc[-1] if len(res_serie) else pd.Series({"estado": "—", "fatiga": float("nan")})
         res["series"].append({"serie": int(numero), "reps": int(len(r)),
                               "mdf": tendencia(r, "mdf"), "mnf": tendencia(r, "mnf"), "rms": tendencia(r, "rms"),
                               "estado_final_esp": ultimo.estado, "caida_final_esp": float(ultimo.fatiga)})

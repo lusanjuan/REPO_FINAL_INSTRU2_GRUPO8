@@ -43,6 +43,32 @@ python comparar.py iso          (solo las que tengan "iso" en el nombre)
 
 Resultados en `<sesion>/analisis/`: `resumen.txt` (las conclusiones con números), `reps.csv`, `ventanas.csv`, `senal.png`, `mdf_reps.png`, `espectros.png`, `validacion_esp.png`, `diapo.png` (1920×1080).
 
+### Analizar un CSV sin correr `grabar.py`
+
+Poné el archivo de señal en una carpeta de sesión, por ejemplo:
+
+```
+sesiones/entrada_manual/senal.csv
+```
+
+Para una entrada manual, usa el esquema siguiente. Los formatos anteriores con `n,mV` o `mV_procesada` también se mantienen aceptados por compatibilidad.
+
+Para datos manuales, el formato recomendado es exactamente:
+
+```
+usuario,sexo,modo,muestra,t_s,mV,fatiga
+```
+
+Debe haber una fila por muestra; `muestra` es el índice entero, `t_s` el tiempo en segundos y `mV` la señal. La frecuencia esperada es 2000 Hz. `usuario`, `sexo` y `modo` deben mantenerse constantes durante la sesión. `fatiga` debe ser `1` en las muestras desde que el usuario indica fatiga y `0` en las demás. El informe y `senal.png` muestran esos intervalos.
+
+Corré el análisis indicando esa carpeta:
+
+```
+python analizar.py sesiones/entrada_manual
+```
+
+Los archivos auxiliares (`detector.csv`, `resultados.csv`, `marcas.csv` y `meta.json`) son opcionales; sin ellos no habrá comparación contra resultados de la ESP. Los resultados se guardan en `sesiones/entrada_manual/analisis/`.
+
 ## Protocolo sugerido
 
 Una sesión por prueba, con `--etiqueta` clara. Entre pruebas de fatiga, descanso de ≥ 5 min.

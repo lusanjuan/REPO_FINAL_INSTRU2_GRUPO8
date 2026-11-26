@@ -1,0 +1,114 @@
+{
+  "sesion": "entrada_manual",
+  "meta": {
+    "etiqueta": "entrada_manual",
+    "persona": "Lucia San Juan 2",
+    "peso_kg": "",
+    "ejercicio": "",
+    "notas": "Carpeta preparada para CSV externo; no se conectó a la ESP.",
+    "inicio": "2026-11-26T00:29:26",
+    "bloques_recibidos": 0,
+    "bloques_perdidos": 0,
+    "resultados_recibidos": 0,
+    "duracion_s": 0,
+    "fin": "2026-11-26T00:29:26",
+    "sexo": "Femenino",
+    "modo": "ble"
+  },
+  "enlace": {
+    "duracion_s": 95.2,
+    "muestras_recibidas_pct": 100.0,
+    "huecos": 0,
+    "hueco_mas_largo_ms": 0.0
+  },
+  "ruido": {
+    "ruido_base_mV": 31.1,
+    "envolvente_p95_mV": 209.2,
+    "snr_dB": 16.6,
+    "reposo_esp_mV": null,
+    "recortado_pct": null,
+    "entrada_cruda": true,
+    "saturacion": {
+      "mediana_cruda_mV": 660.0,
+      "min_mV": 0.0,
+      "max_mV": 1773.0,
+      "piso_pct": 0.054,
+      "techo_pct": 0.001
+    }
+  },
+  "depuracion": {
+    "detectadas": 27,
+    "incompletas": 3,
+    "post_marca": 0,
+    "usadas": 24
+  },
+  "conteo": {
+    "esp": null,
+    "pc": 27,
+    "coinciden": null
+  },
+  "series": [
+    {
+      "serie": 1,
+      "reps": 24,
+      "mdf": {
+        "ref": 55.64,
+        "pendiente_por_rep": -0.584,
+        "r": -0.633,
+        "p": 0.000908,
+        "significativa": true,
+        "caida_pct": 27.8,
+        "cambio_pct": -27.8
+      },
+      "mnf": {
+        "ref": 60.65,
+        "pendiente_por_rep": -0.442,
+        "r": -0.746,
+        "p": 2.8e-05,
+        "significativa": true,
+        "caida_pct": 18.3,
+        "cambio_pct": -18.3
+      },
+      "rms": {
+        "ref": 106.6,
+        "pendiente_por_rep": 3.901,
+        "r": 0.851,
+        "p": 1.33e-07,
+        "significativa": true,
+        "caida_pct": -80.6,
+        "cambio_pct": 80.6
+      },
+      "estado_final_esp": "—",
+      "caida_final_esp": NaN
+    }
+  ],
+  "isometrica": {
+    "pendiente_hz_por_s": -0.0718,
+    "r": -0.262,
+    "p": 0.00154,
+    "mdf_inicio": 48.6,
+    "mdf_final": 42.1,
+    "caida_pct": 13.4,
+    "segundos_activos": 35.8
+  },
+  "marcas": [
+    {
+      "tipo": "fatiga (usuario)",
+      "t_s": 93.4,
+      "rep_cercana": 24,
+      "estado_esp": "—"
+    }
+  ],
+  "conclusiones": [
+    "Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 95.2 s.",
+    "Ruido de base (envolvente, percentil 10): 31.1 mV; contracción (percentil 95): 209.2 mV; SNR 16.6 dB.",
+    "Entrada cruda del ADC (mediana 660.0 mV, rango 0.0–1773.0 mV): se filtró en la PC (pasabanda 20–450 Hz + notch 50 Hz, como los scripts del grupo). Muestras en el piso (≤ 10 mV): 0.054 %; en el máximo: 0.001 %.",
+    "   ⚠ La señal toca 0 mV: el ADC está saturando abajo. Eso deforma la señal y puede subir la MDF.",
+    "Repeticiones contadas en la PC: 27 (no hay datos de la ESP para comparar).",
+    "   Para el análisis se usan 24: se descartaron 3 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.",
+    "Serie 1 (24 reps): MDF 55.64 Hz → pendiente -0.584 Hz/rep (r = -0.633, p = 0.000908, significativa); caída estimada 27.8 % → nivel 'alta'. ",
+    "   MNF: caída 18.3 % (p = 2.8e-05).  RMS: cambio +80.6 % (p = 1.33e-07).",
+    "Ventanas de 1 s (35.8 s con contracción): MDF 48.6 → 42.1 Hz, caída 13.4 %, pendiente -0.0718 Hz/s (r = -0.262, p = 0.00154).",
+    "Marca 'fatiga (usuario)' en 93.4 s: cerca de la rep 24."
+  ]
+}

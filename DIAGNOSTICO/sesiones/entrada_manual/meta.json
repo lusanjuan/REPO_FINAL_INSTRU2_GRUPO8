@@ -1,0 +1,13 @@
+{
+  "etiqueta": "entrada_manual",
+  "persona": "",
+  "peso_kg": "",
+  "ejercicio": "",
+  "notas": "Carpeta preparada para CSV externo; no se conectó a la ESP.",
+  "inicio": "2026-11-26T00:29:26",
+  "bloques_recibidos": 0,
+  "bloques_perdidos": 0,
+  "resultados_recibidos": 0,
+  "duracion_s": 0,
+  "fin": "2026-11-26T00:29:26"
+}
