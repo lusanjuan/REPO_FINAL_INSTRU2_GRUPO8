@@ -1,0 +1,16 @@
+Sesión 20261126_111520
+Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 148.3 s.
+Ruido de base (envolvente, percentil 10): 18.3 mV; contracción (percentil 95): 141.0 mV; SNR 17.7 dB.
+El recorte de picos tocó el 0.337 % de las muestras.
+Repeticiones: la ESP contó 40, el conteo independiente 40 (40 coinciden a menos de 0.6 s).
+   Para la tendencia se usan 40: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.
+MDF ESP vs PC: diferencia media 0.03 Hz (máxima 0.05 Hz) en 40 repeticiones.
+Serie 1 (40 reps): MDF 51.86 Hz → pendiente 0.75 Hz/rep (r = 0.446, p = 0.0039, significativa); caída estimada -37.9 % → nivel 'sin'. La ESP terminó en 'esperando' (0.0 %).
+   MNF: caída -35.8 % (p = 0.00362).  RMS: cambio +77.3 % (p = 0.000324).
+Ventanas de 1 s (86.0 s con contracción): MDF 18.4 → 143.1 Hz, caída -676.2 %, pendiente 0.8671 Hz/s (r = 0.797, p = 5.6e-77).
+Métodos (espectro de ruido medido en 2 tramos de reposo de 1,5 s; reps que pasan el filtro de calidad: 40/40):
+   MDF       M0 -38 % (sin aviso) · M1 -5 % (sin aviso) · M2 -8 % (leve) · M3 -8 % (leve) · M4 -7 % (moderada) · M5 -7 % (sin aviso)
+   MNF       M0 -36 % (sin aviso) · M1 +0 % (sin aviso) · M2 +1 % (leve) · M3 +1 % (leve) · M4 -0 % (leve) · M5 -0 % (leve)
+   MDF+MNF   M0 -51 % (sin aviso) · M1 -5 % (sin aviso) · M2 -8 % (sin aviso) · M3 -8 % (sin aviso) · M4 -7 % (leve) · M5 -7 % (sin aviso)
+   MDF o MNF M0 -38 % (sin aviso) · M1 +0 % (sin aviso) · M2 +2 % (leve) · M3 +2 % (leve) · M4 -1 % (moderada) · M5 -1 % (leve)
+   (MNF con umbrales × 0.7; en MDF+MNF y MDF o MNF el % está en la escala de la MDF)

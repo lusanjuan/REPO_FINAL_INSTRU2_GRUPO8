@@ -1,0 +1,5 @@
+grabacion,senal,criterio,reps,usadas,ruidosas,ruido_base_mV,snr_dB,dispersion_pct,pendiente_mdf_hz_rep,p_mdf,caida_final_pct,nivel_final,rep_alta,antes_marca_alta_s
+20261126_114209,MDF o MNF,sin criterio,20,20,0,16.2,26.2,5.02,-0.238,0.0816,7.3,moderada,,
+20261126_114209,MDF o MNF,con criterio,20,20,0,16.2,26.2,5.02,-0.238,0.0816,7.3,moderada,,
+20261126_114209,MDF,sin criterio,20,20,0,16.2,26.2,5.02,-0.238,0.0816,7.3,moderada,,
+20261126_114209,MDF,con criterio,20,20,0,16.2,26.2,5.02,-0.238,0.0816,7.3,moderada,,

@@ -137,9 +137,9 @@ constexpr float REF_CV_MDF_MAX       = 0.08f;  // dispersión de las MDF (desví
 constexpr bool  REF_MANTENER_ENTRE_SERIES = true;  // la referencia de la serie 1 vale para toda la sesión
 
 // ---- Fatiga ----
-constexpr float FATIGA_LEVE_PCT        = 7.0f;   // caída de la MDF respecto de la referencia [%]
-constexpr float FATIGA_MODERADA_PCT    = 12.0f;
-constexpr float FATIGA_ALTA_PCT        = 20.0f;
+constexpr float FATIGA_LEVE_PCT        = 5.0f;   // caída de la MDF respecto de la referencia [%]
+constexpr float FATIGA_MODERADA_PCT    = 10.0f;
+constexpr float FATIGA_ALTA_PCT        = 13.0f;
 constexpr bool  FATIGA_USAR_RECTA      = true;   // MDF actual = recta de toda la serie
 constexpr bool  FATIGA_RECTA_ROBUSTA   = true;   // recta de Theil-Sen (mediana de las pendientes entre
                                                  //   pares de reps): una rep rara casi no la mueve.

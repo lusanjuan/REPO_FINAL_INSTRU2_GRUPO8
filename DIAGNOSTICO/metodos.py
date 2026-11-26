@@ -34,6 +34,7 @@ import config as C
 REPS_OBSERVAR = 5           # igual que REF_REPS_OBSERVAR de la ESP
 REPS_REFERENCIA = 3         # igual que REF_REPS
 VALIDA_RMS_MIN = 0.70       # igual que VALIDA_RMS_MIN
+VALIDA_SNR_MIN = 2.0        # igual que VALIDA_SNR_MIN: RMS de la rep >= 2 × reposo (si no, "ruidosa")
 REPS_MIN_RECTA = 4          # igual que FATIGA_REPS_MIN_RECTA
 REPS_MEDIANA = 3            # igual que FATIGA_REPS_MEDIANA
 CONFIRMAR_REPS = 2          # igual que FATIGA_CONFIRMAR_REPS
@@ -139,7 +140,7 @@ def caracteristicas(s, reps, env, reposo, banda):
             if len(c):
                 sat = float(np.mean((c <= 10) | (c >= np.nanmax(cruda) - 2)))
         filas.append({"mdf": mdf, "mnf": mnf, "mdf_l": mdf_l, "mnf_l": mnf_l, "rms": rms,
-                      "frac_baja": frac_baja, "snr": rms / rms_reposo if rms_reposo > 0 else np.inf, "sat": sat})
+                      "frac_baja": frac_baja, "snr": rms / reposo if reposo > 0 else np.inf, "sat": sat})
     vacia = {"mdf": np.nan, "mnf": np.nan, "mdf_l": np.nan, "mnf_l": np.nan, "rms": np.nan,
              "frac_baja": np.nan, "snr": np.nan, "sat": np.nan}
     import pandas as pd
@@ -169,12 +170,14 @@ def ajuste(x, y, theil_sen):
     return pendiente, ordenada
 
 
-def validas(rms, calidad_ok, usar_calidad):
-    """Válida al momento de llegar: RMS >= 70 % de la mediana de las RMS hasta ella (como la ESP)."""
+def validas(rms, calidad_ok, usar_calidad, snr):
+    """Válida al momento de llegar (como la ESP): RMS >= 70 % de la mediana de las RMS hasta ella
+    y no ruidosa (RMS >= VALIDA_SNR_MIN × reposo)."""
     v = np.zeros(len(rms), bool)
     for k in range(len(rms)):
         hasta = rms[:k + 1][np.isfinite(rms[:k + 1])]
         v[k] = np.isfinite(rms[k]) and len(hasta) and rms[k] >= VALIDA_RMS_MIN * np.median(hasta)
+        v[k] &= not (VALIDA_SNR_MIN > 0 and snr[k] < VALIDA_SNR_MIN)
         if usar_calidad:
             v[k] &= bool(calidad_ok[k])
     return v
@@ -251,7 +254,7 @@ def comparar(car, t_marca):
     filas, curvas = [], {}
     rms = car.rms.values.astype(float)
     for m in METODOS:
-        valida = validas(rms, car.calidad_ok.values, m["calidad"])
+        valida = validas(rms, car.calidad_ok.values, m["calidad"], car.snr.values.astype(float))
         cols = ("mdf_l", "mnf_l") if m["limpio"] else ("mdf", "mnf")
         c_mdf, h = simular_caida(car[cols[0]].values.astype(float), rms, valida, m)
         c_mnf, _ = simular_caida(car[cols[1]].values.astype(float), rms, valida, m)
