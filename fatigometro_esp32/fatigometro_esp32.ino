@@ -8,11 +8,12 @@
 //
 // Interrupciones (pedido de la cátedra):
 //   1. Timer de hardware a 2000 Hz -> isrTimer() despierta a la tarea que lee el ADC.
-//   2. Botón BOOT, flanco descendente -> isrBoton() pide iniciar una serie.
+//   2. Botón de START, flanco descendente -> isrBoton() pide iniciar una serie.
 //   (El BLE, además, avisa conexión y comandos por callbacks.)
 //
 // BLE (dispositivo "MyoSignals", servicio 8d1f0001-...):
-//   Comando  8d1f0004-...  WRITE   la app escribe 'I' = START (iniciar serie)
+//   Comando  8d1f0004-...  WRITE   la app escribe 'N' = NUEVA SESIÓN (serie 1: calibra la referencia)
+//                                                 'I' = START (serie siguiente: misma referencia)
 //                                                 'S' = STOP  (terminar serie)
 //   Fatiga   8d1f0003-...  NOTIFY  un JSON cada 0,5 s y en cada repetición:
 //     {"v":2,"seq":41,"t":612034,"serie":1,"reps":7,"estado":"leve","fatiga":8.1,
@@ -42,9 +43,9 @@
 // ---- Pines ----
 constexpr int PIN_EMG   = 0;    // salida de la etapa analógica -> GPIO0 (ADC1_CH0)
 constexpr int PIN_LED   = 3;    // prendido = conectado por BLE
-constexpr int PIN_BOTON = 20;    // botón BOOT de la SuperMini (activo en bajo)
+constexpr int PIN_BOTON = 20;   // botón de START (activo en bajo)
 constexpr int PIN_SDA   = 8;    // pantalla OLED (I2C)
-constexpr int PIN_SCL   = 9;    
+constexpr int PIN_SCL   = 9;    // pantalla OLED (I2C)
 constexpr int PIN_BUZZER = 7;
 
 // ---- Muestreo ----
@@ -84,6 +85,7 @@ constexpr bool     ENVIAR_DIAGNOSTICO  = true;  // TEMPORAL: señal procesada pa
 constexpr float    DIAG_ESCALA_MUESTRA = 10.0f; // la señal va en décimas de mV (int16: ±3276 mV)
 constexpr char     CMD_INICIAR         = 'I';
 constexpr char     CMD_DETENER         = 'S';
+constexpr char     CMD_NUEVA_SESION    = 'N';   // nueva sesión: olvida la referencia y arranca la serie 1
 constexpr int      JSON_MAX            = 200;
 
 static_assert(FS_HZ == (int)fatiga::FS, "FS_HZ tiene que ser igual a fatiga::FS");
@@ -114,7 +116,7 @@ static_assert(sizeof(PaqueteDiagnostico) == 234, "el paquete de diagnóstico tie
 // (volatile: lo cambian una ISR o el BLE y lo lee loop())
 // =============================================================================
 
-enum class Comando : uint8_t { NINGUNO, INICIAR, DETENER };
+enum class Comando : uint8_t { NINGUNO, INICIAR, DETENER, NUEVA_SESION };
 static volatile Comando comandoPendiente = Comando::NINGUNO;
 static volatile bool    bleConectado     = false;
 
@@ -163,7 +165,7 @@ void ARDUINO_ISR_ATTR isrTimer() {
   portYIELD_FROM_ISR(despertar);
 }
 
-// Botón BOOT: pide iniciar una serie. El trabajo se hace en loop(), no acá.
+// Botón de START: pide iniciar una serie (misma referencia de la sesión). El trabajo se hace en loop(), no acá.
 void ARDUINO_ISR_ATTR isrBoton() {
   const uint32_t ahora = millis();
   if (ahora - ultimoBotonMs < ANTIRREBOTE_MS) return;
@@ -219,6 +221,7 @@ class ComandoCallbacks : public BLECharacteristicCallbacks {
     const char cmd = (char)toupper(c->getData()[0]);
     if (cmd == CMD_INICIAR)      comandoPendiente = Comando::INICIAR;
     else if (cmd == CMD_DETENER) comandoPendiente = Comando::DETENER;
+    else if (cmd == CMD_NUEVA_SESION) comandoPendiente = Comando::NUEVA_SESION;
   }
 };
 
@@ -441,6 +444,16 @@ void imprimirEvento(const fatiga::Resultado &r) {
 // ACCIONES
 // =============================================================================
 
+// Sesión nueva (app: "Iniciar entrenamiento"): la ESP olvida la referencia y arranca la serie 1
+void nuevaSesion() {
+  analizador.nuevaSesion();
+  numeroSerie++;
+  avisoAltaDado = false;
+  nHistMdf = 0;
+  redibujar = true;
+}
+
+// Serie siguiente (app: "Iniciar serie N", o el botón): mantiene la referencia de la sesión
 void iniciarSerie() {
   analizador.iniciarSerie();
   numeroSerie++;
@@ -536,7 +549,7 @@ void setup() {
   configurarBoton();
   configurarMuestreo();
 
-  Serial.println("FATIGOMETRO listo: START desde la app (o boton BOOT)");
+  Serial.println("FATIGOMETRO listo: START desde la app (o el boton)");
 }
 
 // =============================================================================
@@ -562,6 +575,7 @@ void atenderComandos() {
   const Comando c = comandoPendiente;   // lo escribió la ISR del botón o el BLE
   comandoPendiente = Comando::NINGUNO;
   if (c == Comando::INICIAR) iniciarSerie();
+  else if (c == Comando::NUEVA_SESION) nuevaSesion();
   else if (c == Comando::DETENER) detenerSerie();
 }
 

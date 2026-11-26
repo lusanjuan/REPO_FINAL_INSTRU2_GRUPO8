@@ -8,7 +8,8 @@
 //
 // Uso desde el .ino:
 //     fatiga::Analizador analizador;
-//     analizador.iniciarSerie();                 // START (app) o botón BOOT
+//     analizador.nuevaSesion();                  // NUEVA SESIÓN (app): olvida la referencia y arranca la serie 1
+//     analizador.iniciarSerie();                 // START (app) o botón: serie siguiente, misma referencia
 //     fatiga::Resultado r;
 //     if (analizador.agregar(muestra_mV, r)) {   // 2000 veces por segundo
 //       ... r tiene un resultado nuevo: mostrarlo / mandarlo ...
@@ -24,6 +25,13 @@
 //                   repeticiones VÁLIDAS (ver "Repetición válida").
 //   MIDIENDO        Cada repetición se compara con la referencia y da un nivel de
 //                   fatiga: SIN_FATIGA, LEVE, MODERADA o ALTA.
+//
+//   Referencia de la sesión (REF_MANTENER_ENTRE_SERIES = true):
+//     La referencia se calibra en la primera serie y se mantiene en las
+//     siguientes: la serie 2 en adelante va de RELAJA directo a MIDIENDO y su
+//     fatiga se mide contra el músculo descansado de la serie 1. Se olvida con
+//     nuevaSesion() (o al apagar). Si la serie 1 no pudo calibrar, la siguiente
+//     vuelve a calibrar.
 //   SIN_REFERENCIA  No logró calibrar en REF_INTENTOS_MAX repeticiones. Las
 //                   repeticiones se siguen contando.
 //
@@ -118,6 +126,7 @@ constexpr bool  REF_INCLUIR_PRIMERA  = true;   // false: la 1.ª repetición se 
 constexpr float REF_TOL_RITMO        = 0.30f;  // intervalos entre picos: ±30 % de su mediana
 constexpr float REF_TOL_RMS          = 0.25f;  // RMS de cada repetición: ±25 % de la mediana
 constexpr float REF_CV_MDF_MAX       = 0.08f;  // dispersión de las MDF (desvío / promedio)
+constexpr bool  REF_MANTENER_ENTRE_SERIES = true;  // la referencia de la serie 1 vale para toda la sesión
 
 // ---- Fatiga ----
 constexpr float FATIGA_LEVE_PCT        = 7.0f;   // caída de la MDF respecto de la referencia [%]
@@ -251,11 +260,22 @@ public:
   Analizador() { iniciar(); }
 
   // Empieza una serie: mide el reposo, calibra y después mide la fatiga
+  // Serie siguiente: si ya hay referencia (y REF_MANTENER_ENTRE_SERIES), se conserva
   void iniciarSerie() {
+    if (!REF_MANTENER_ENTRE_SERIES) mdfRef_ = 0;
     reiniciarSerie();
     etapa_ = Etapa::RELAJA;
-    evento_ = "serie iniciada: relaja el brazo";
+    evento_ = mdfRef_ > 0 ? "serie iniciada (misma referencia): relaja el brazo" : "serie iniciada: relaja el brazo";
   }
+
+  // Sesión nueva (otro día, otra persona, electrodos recolocados): olvida la referencia
+  void nuevaSesion() {
+    mdfRef_ = 0;
+    iniciarSerie();
+    evento_ = "sesion nueva: relaja el brazo";
+  }
+
+  bool tieneReferencia() const { return mdfRef_ > 0; }
 
   // Termina la serie: deja de contar. Se conservan las repeticiones y la fatiga
   // de la serie para que el último resultado las informe.
@@ -374,6 +394,7 @@ private:
     sumaBloque_ = 0; sumaBloqueSinRecorte_ = 0;
     posBloque_ = 0; nBloques_ = 0; envolvente_ = 0; escala_ = 0;
     etapa_ = Etapa::ESPERANDO;
+    mdfRef_ = 0;
     reiniciarSerie();
   }
 
@@ -410,7 +431,7 @@ private:
     reps_ = 0; repNueva_ = false;
     memset(&ultima_, 0, sizeof(ultima_));
     nRepsSerie_ = 0; ultimaValida_ = false; intentosCalibracion_ = 0;
-    mdfRef_ = 0; nSerie_ = 0;
+    nSerie_ = 0;                             // mdfRef_ NO se borra: es de la sesión
     mdfActual_ = 0; caida_ = 0; pendiente_ = 0; repsSobreUmbral_ = 0;
   }
 
@@ -483,9 +504,14 @@ private:
     if (puntosQuietos_ < PUNTOS_REPOSO) return false;
 
     reposo_ = (float)(sumaReposo_ / puntosQuietos_);
-    etapa_ = Etapa::CALIBRANDO;
     buscandoPico_ = true; maximo_ = 0; minimo_ = reposo_; tUltimoPico_ = -1e9f;
-    evento_ = "reposo medido: empeza";
+    if (mdfRef_ > 0) {                         // serie 2 en adelante: ya hay referencia
+      etapa_ = Etapa::MIDIENDO;
+      evento_ = "reposo medido: empeza (referencia de la serie anterior)";
+    } else {
+      etapa_ = Etapa::CALIBRANDO;
+      evento_ = "reposo medido: empeza";
+    }
     return true;
   }
 

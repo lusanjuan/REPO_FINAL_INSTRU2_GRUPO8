@@ -586,10 +586,15 @@ function generarPlan(profile) {
    característica FATIGA y le manda dos comandos por la característica COMANDO:
      'I' = START: la ESP empieza una serie (relajar -> calibrar -> medir)
      'S' = STOP:  la ESP termina la serie y deja de contar
+     'N' = NUEVA SESIÓN: como 'I', pero la ESP olvida la referencia y vuelve a calibrar
+   La referencia (el músculo descansado) se calibra en la serie 1 y la ESP la usa
+   en todas las series del entrenamiento: así la serie 2 no arranca "de cero".
    Cuándo se mandan:
-     Iniciar entrenamiento / Iniciar serie N  -> 'I'
+     Iniciar entrenamiento                    -> 'N'
+     Iniciar serie N (después del descanso)   -> 'I'
      Terminar serie / Guardar / Descartar     -> 'S'
-     Si el sensor se conecta con una serie en curso y la ESP está esperando -> 'I'
+     Si el sensor se conecta con una serie en curso y la ESP está esperando ->
+       'N' si todavía no llegó el de este entrenamiento, si no 'I'
 
    Paquete (v2), lo que manda la ESP cada 0,5 s y en cada repetición:
      { v: 2, seq, t, serie, reps, estado, fatiga, mdf, ref, act, rms, cal, rep, sat }
@@ -609,6 +614,7 @@ const BLE_SENSOR = {
 };
 const CMD_INICIAR = 'I';
 const CMD_DETENER = 'S';
+const CMD_NUEVA_SESION = 'N';
 const SENSOR_TIMEOUT_MS = 3000;   // sin paquetes durante este tiempo = sensor sin datos
 const FATIGA_UMBRAL = { leve: 7, moderada: 12, alta: 20 };   // % de caída de la MDF, igual que el firmware
 const ESTADOS = ['esperando', 'relaja', 'calibrando', 'sin', 'leve', 'moderada', 'alta', 'sinref'];
@@ -667,7 +673,8 @@ const sensor = {
       if (!this.cmd || !this.conectado) return;
       try {
         await this.cmd.writeValue(new TextEncoder().encode(comando));
-        if (comando === CMD_INICIAR) this.ultimoInicioMs = Date.now();
+        if (comando === CMD_INICIAR || comando === CMD_NUEVA_SESION) this.ultimoInicioMs = Date.now();
+        if (comando === CMD_NUEVA_SESION) training.sesionEnviada = true;
       }
       catch (e) { console.warn('No se pudo mandar el comando', comando, e); }
     });
@@ -691,7 +698,10 @@ const sensor = {
     // Serie en curso en la app pero la ESP esperando (se conectó después de tocar Iniciar): START
     // (si se mandó START hace menos de 2 s, el paquete es anterior a ese START: no se repite)
     if (training.phase === 'running' && p.estado === 'esperando') {
-      if (!this.inicioPedido && Date.now() - this.ultimoInicioMs > 2000) { this.inicioPedido = true; this.enviar(CMD_INICIAR); }
+      if (!this.inicioPedido && Date.now() - this.ultimoInicioMs > 2000) {
+        this.inicioPedido = true;
+        this.enviar(training.sesionEnviada ? CMD_INICIAR : CMD_NUEVA_SESION);
+      }
     } else {
       this.inicioPedido = false;
     }
@@ -721,6 +731,7 @@ const training = {
   phase: 'idle',
   reps: 0, seconds: 0, setSeconds: 0, fatiga: 0, estado: 'esperando',
   restSeconds: 0,
+  sesionEnviada: false,   // la ESP ya recibió 'N' en este entrenamiento (la referencia es de esta sesión)
   sets: [], saveIndex: 0,
   startedAt: null,
   saveError: '',
@@ -777,6 +788,7 @@ function trainingReset() {
   training.phase = 'idle';
   training.reps = 0; training.seconds = 0; training.setSeconds = 0; training.fatiga = 0; training.estado = 'esperando';
   training.restSeconds = 0;
+  training.sesionEnviada = false;
   training.sets = []; training.saveIndex = 0;
   training.startedAt = null;
   training.saveError = '';
@@ -795,7 +807,7 @@ function trainingStart() {
   training.phase = 'running';
   training.startedAt = new Date().toISOString();
   trainingStartLoops();
-  sensor.enviar(CMD_INICIAR);
+  sensor.enviar(CMD_NUEVA_SESION);   // serie 1: la ESP calibra la referencia del entrenamiento
   render();
 }
 function trainingPause() { training.phase = 'paused'; trainingStopLoops(); render(); }
@@ -823,7 +835,7 @@ function trainingStartNextSet() {
   training.restSeconds = 0;
   training.phase = 'running';
   trainingStartLoops();
-  sensor.enviar(CMD_INICIAR);
+  sensor.enviar(training.sesionEnviada ? CMD_INICIAR : CMD_NUEVA_SESION);   // misma referencia que la serie 1
   render();
 }
 function trainingAskFinish() {
