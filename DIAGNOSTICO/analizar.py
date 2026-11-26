@@ -29,6 +29,7 @@ from scipy import signal, stats
 from scipy.ndimage import uniform_filter1d
 
 import config as C
+import metodos
 
 # =============================================================================
 # Configuración del análisis
@@ -74,6 +75,7 @@ def leer_csv(carpeta, nombre):
 
 def cargar(ruta):
     """Acepta una carpeta de grabar.py o un CSV suelto (columnas muestra, t_s, mV y opcionales usuario, sexo, fatiga)."""
+    BANDA[:] = C.BANDA_HZ                                       # se vuelve a fijar en cada archivo
     if os.path.isfile(ruta):
         carpeta = os.path.splitext(ruta)[0]                     # los resultados van a una carpeta con el mismo nombre
         os.makedirs(carpeta, exist_ok=True)
@@ -123,6 +125,7 @@ def cargar(ruta):
         if len(inicios):
             s["marcas"] = pd.DataFrame({"t_s": s["t"][inicios], "tipo": "fatiga (usuario)"})
     s["y"], s["cruda"], s["saturacion"] = acondicionar(y)
+    s["y_cruda"] = y if s["cruda"] else None
     return s
 
 
@@ -592,6 +595,18 @@ def analizar(carpeta, graficos=True):
     if len(v):
         dif = np.abs(v.mdf - v.mdf_esp)
         res["validacion"] = {"n": int(len(v)), "mae_hz": round(float(dif.mean()), 2), "max_hz": round(float(dif.max()), 2)}
+    # ---- Comparación de métodos (sobre todas las reps detectadas, antes de depurar) ----
+    t_marca = float(s["marcas"].t_s.iloc[0] - s["t0"]) if not s["marcas"].empty else None
+    comparacion = None
+    if len(reps) >= metodos.REPS_OBSERVAR:
+        serie_mayor = reps.serie.value_counts().idxmax()          # la serie más larga
+        rm = reps[reps.serie == serie_mayor]
+        if t_marca is not None and EXCLUIR_POST_MARCA and not hay_esp:
+            rm = rm[rm.t_s <= t_marca]
+        car, info = metodos.caracteristicas(s, rm.reset_index(drop=True), env, reposo, BANDA)
+        tabla, curvas = metodos.comparar(car, t_marca)
+        comparacion = (car, tabla, curvas, info)
+
     # Igual que la ESP y los scripts del grupo: todas se cuentan, pero solo las válidas entran en la tendencia
     reps, res["depuracion"] = depurar_reps(s, reps, excluir_post_marca=EXCLUIR_POST_MARCA and not hay_esp)
 
@@ -617,11 +632,26 @@ def analizar(carpeta, graficos=True):
                               "estado_esp": previos.estado.iloc[-1] if len(previos) else "—"})
 
     res["conclusiones"] = conclusiones(res)
+    if comparacion:
+        car, tabla, curvas, info = comparacion
+        res["conclusiones"] += metodos.conclusiones(tabla, t_marca, info)
+        res["metodos"] = tabla.to_dict(orient="records")
 
     # ---- archivos ----
     if len(reps):
         reps.drop(columns="_psd").round(3).to_csv(os.path.join(salida, "reps.csv"), index=False)
     ventanas.round(3).to_csv(os.path.join(salida, "ventanas.csv"), index=False)
+    if comparacion:
+        car, tabla, curvas, info = comparacion
+        tabla.to_csv(os.path.join(salida, "metodos.csv"), index=False)
+        detalle = car.copy()
+        for (clave, senal), cv in curvas.items():
+            if senal == "MDF+MNF":
+                detalle[f"caida_{clave}_MDF+MNF"] = np.round(cv["caida"], 2)
+                detalle[f"valida_{clave}"] = cv["valida"]
+            else:
+                detalle[f"caida_{clave}_{senal}"] = np.round(cv["caida"], 2)
+        detalle.round(3).to_csv(os.path.join(salida, "metodos_reps.csv"), index=False)
     limpio = json.loads(json.dumps(res, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     for serie in limpio["series"]:
         for k in ("mdf", "mnf", "rms"):
@@ -644,6 +674,9 @@ def analizar(carpeta, graficos=True):
             graficar_validacion(reps, res["conteo"], salida)
             mejor = max(res["series"], key=lambda x: x["reps"]) if res["series"] else None
             graficar_diapo(s, reps, mejor, salida)
+        if comparacion:
+            car, tabla, curvas, info = comparacion
+            metodos.graficar(car, tabla, curvas, t_marca, salida, s["nombre"])
 
     print(f"\n=== {s['nombre']} ===")
     print("\n".join(res["conclusiones"]))
@@ -652,4 +685,10 @@ def analizar(carpeta, graficos=True):
 
 
 if __name__ == "__main__":
-    analizar(resolver_carpeta(sys.argv[1] if len(sys.argv) > 1 else "ultima"))
+    # Uno o varios: python analizar.py a.csv b.csv sesiones/xxx   (sin nada = la última sesión)
+    # (en Windows la terminal no expande *.csv: lo hacemos acá)
+    rutas = []
+    for arg in (sys.argv[1:] or ["ultima"]):
+        rutas += sorted(glob.glob(arg)) if any(c in arg for c in "*?") else [arg]
+    for ruta in rutas:
+        analizar(resolver_carpeta(ruta))

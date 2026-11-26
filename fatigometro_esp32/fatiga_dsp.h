@@ -46,11 +46,18 @@
 //      el reposo y está a REP_SEPARACION_MIN_S de la anterior.
 //   5. MDF, MNF y RMS de la repetición: espectro de Welch (tramos de 512, Hann,
 //      50 % de solape) en una ventana de 1,5 s centrada en el pico.
-//   6. Fatiga: recta MDF vs número de repetición (mínimos cuadrados) sobre toda
-//      la serie; su valor en la última repetición es la "MDF actual".
-//      caída % = 100 · (referencia − MDF actual) / referencia.
+//   6. Fatiga (método "M2 + MDF o MNF" de metodos.py, el que mejor dio en las pruebas):
+//      - Recta de Theil-Sen de la MDF (y otra de la MNF) vs número de repetición
+//        válida, sobre toda la serie. Su valor en la última rep es la "actual".
+//      - Referencia = valor de la recta en la primera rep válida. En las series
+//        siguientes se usa la de la serie 1, congelada.
+//      - caída % = 100 · (referencia − actual) / referencia, para MDF y MNF.
+//      - La MNF cae menos: se divide por MNF_FACTOR_UMBRALES para usar los mismos
+//        umbrales. Con FATIGA_SENAL = MDF_O_MNF manda la mayor de las dos.
 //      El nivel sube si la caída supera el umbral FATIGA_CONFIRMAR_REPS
 //      repeticiones seguidas, y no baja dentro de la serie.
+//      (FATIGA_RECTA_ROBUSTA, FATIGA_REF_DE_LA_RECTA y FATIGA_SENAL permiten volver
+//       al método anterior: false, false y MDF.)
 //
 // Repetición válida (igual que los scripts de análisis del grupo):
 //   TODAS las repeticiones se cuentan. Pero solo las válidas entran en la
@@ -63,6 +70,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
+#include <algorithm>
 
 namespace fatiga {
 
@@ -133,6 +141,19 @@ constexpr float FATIGA_LEVE_PCT        = 7.0f;   // caída de la MDF respecto de
 constexpr float FATIGA_MODERADA_PCT    = 12.0f;
 constexpr float FATIGA_ALTA_PCT        = 20.0f;
 constexpr bool  FATIGA_USAR_RECTA      = true;   // MDF actual = recta de toda la serie
+constexpr bool  FATIGA_RECTA_ROBUSTA   = true;   // recta de Theil-Sen (mediana de las pendientes entre
+                                                 //   pares de reps): una rep rara casi no la mueve.
+                                                 //   false = mínimos cuadrados (como antes)
+constexpr bool  FATIGA_REF_DE_LA_RECTA = true;   // referencia = valor de la recta en la primera rep válida
+                                                 //   (no la mediana de 3 reps sueltas). false = como antes
+// Qué se mira para la fatiga:
+//   MDF        solo la MDF (como antes)
+//   MNF        solo la MNF (con sus umbrales)
+//   MDF_Y_MNF  tienen que caer las dos
+//   MDF_O_MNF  alcanza con que caiga una de las dos
+enum class Senal : uint8_t { MDF, MNF, MDF_Y_MNF, MDF_O_MNF };
+constexpr Senal FATIGA_SENAL           = Senal::MDF_O_MNF;
+constexpr float MNF_FACTOR_UMBRALES    = 0.7f;   // umbrales de la MNF = 0,7 × los de la MDF (4,9 / 8,4 / 14 %)
 constexpr int   FATIGA_REPS_MIN_RECTA  = 4;      // con menos repeticiones se usa la mediana:
 constexpr int   FATIGA_REPS_MEDIANA    = 3;      //   mediana de las últimas 3 MDF
 constexpr int   FATIGA_CONFIRMAR_REPS  = 2;      // repeticiones seguidas sobre el umbral para subir
@@ -195,6 +216,10 @@ struct Resultado {
   float    mdf_ref;         // referencia [Hz] (0 si todavía no hay)
   float    mdf_actual;      // MDF actual (recta de la serie) [Hz]
   float    pendiente;       // pendiente de la recta [Hz por repetición]
+  float    mnf_ref;         // referencia de la MNF [Hz]
+  float    mnf_actual;      // MNF actual (recta de la serie) [Hz]
+  float    caida_mdf_pct;   // caída de la MDF [%]
+  float    caida_mnf_pct;   // caída de la MNF [%] (sin escalar)
   float    rms;             // RMS de la repetición (si es nueva) o envolvente actual [mV]
   uint8_t  repsCalibracion; // repeticiones usadas en la calibración hasta ahora
   bool     repNueva;        // este resultado trae una repetición nueva
@@ -262,7 +287,13 @@ public:
   // Empieza una serie: mide el reposo, calibra y después mide la fatiga
   // Serie siguiente: si ya hay referencia (y REF_MANTENER_ENTRE_SERIES), se conserva
   void iniciarSerie() {
-    if (!REF_MANTENER_ENTRE_SERIES) mdfRef_ = 0;
+    if (!REF_MANTENER_ENTRE_SERIES) { mdfRef_ = 0; mnfRef_ = 0; refCongelada_ = false; }
+    // Si ya hay referencia (de la serie anterior), se congela la que se estaba usando
+    if (mdfRef_ > 0 && !refCongelada_) {
+      refCongelada_ = true;
+      refCongeladaMdf_ = mdfRefUsada_;
+      refCongeladaMnf_ = mnfRefUsada_;
+    }
     reiniciarSerie();
     etapa_ = Etapa::RELAJA;
     evento_ = mdfRef_ > 0 ? "serie iniciada (misma referencia): relaja el brazo" : "serie iniciada: relaja el brazo";
@@ -270,7 +301,7 @@ public:
 
   // Sesión nueva (otro día, otra persona, electrodos recolocados): olvida la referencia
   void nuevaSesion() {
-    mdfRef_ = 0;
+    mdfRef_ = 0; mnfRef_ = 0; refCongelada_ = false;
     iniciarSerie();
     evento_ = "sesion nueva: relaja el brazo";
   }
@@ -378,8 +409,17 @@ private:
   // Fatiga
   float mdfRef_ = 0;
   float mdfSerie_[MAX_REPS_SERIE];
+  float mnfSerie_[MAX_REPS_SERIE];
   int nSerie_ = 0;
   float mdfActual_ = 0, caida_ = 0, pendiente_ = 0;
+  float mnfRef_ = 0, mnfActual_ = 0, caidaMdf_ = 0, caidaMnf_ = 0;
+  float mdfRefUsada_ = 0, mnfRefUsada_ = 0;    // la referencia que se usó en la última rep
+  // Referencia de la sesión congelada al terminar la serie 1 (las series siguientes la usan tal cual)
+  bool  refCongelada_ = false;
+  float refCongeladaMdf_ = 0, refCongeladaMnf_ = 0;
+  // Espacio para Theil-Sen: todas las pendientes entre pares de reps
+  float pares_[MAX_REPS_SERIE * (MAX_REPS_SERIE - 1) / 2];
+  float aux_[MAX_REPS_SERIE];
   int repsSobreUmbral_ = 0;
 
   // ===========================================================================
@@ -394,7 +434,7 @@ private:
     sumaBloque_ = 0; sumaBloqueSinRecorte_ = 0;
     posBloque_ = 0; nBloques_ = 0; envolvente_ = 0; escala_ = 0;
     etapa_ = Etapa::ESPERANDO;
-    mdfRef_ = 0;
+    mdfRef_ = 0; mnfRef_ = 0; refCongelada_ = false;
     reiniciarSerie();
   }
 
@@ -433,6 +473,7 @@ private:
     nRepsSerie_ = 0; ultimaValida_ = false; intentosCalibracion_ = 0;
     nSerie_ = 0;                             // mdfRef_ NO se borra: es de la sesión
     mdfActual_ = 0; caida_ = 0; pendiente_ = 0; repsSobreUmbral_ = 0;
+    mnfActual_ = 0; caidaMdf_ = 0; caidaMnf_ = 0;
   }
 
   // ===========================================================================
@@ -568,7 +609,7 @@ private:
         break;
       default:                               // MIDIENDO
         if (ultimaValida_) {
-          if (nSerie_ < MAX_REPS_SERIE) mdfSerie_[nSerie_++] = r.mdf;
+          if (nSerie_ < MAX_REPS_SERIE) { mdfSerie_[nSerie_] = r.mdf; mnfSerie_[nSerie_] = r.mnf; nSerie_++; }
           actualizarFatiga();
           evento_ = "repeticion";
         } else {
@@ -693,13 +734,16 @@ private:
   }
 
   void fijarReferencia(const int *elegidas) {
-    float mdf[REF_REPS];
-    for (int i = 0; i < REF_REPS; i++) mdf[i] = serie_[elegidas[i]].mdf;
+    float mdf[REF_REPS], mnf[REF_REPS];
+    for (int i = 0; i < REF_REPS; i++) { mdf[i] = serie_[elegidas[i]].mdf; mnf[i] = serie_[elegidas[i]].mnf; }
     mdfRef_ = mediana(mdf, REF_REPS);
+    mnfRef_ = mediana(mnf, REF_REPS);
     // La recta empieza con todas las repeticiones válidas desde la primera elegida
     nSerie_ = 0;
     for (int i = elegidas[0]; i < nRepsSerie_; i++)
-      if (esValida(serie_[i]) && nSerie_ < MAX_REPS_SERIE) mdfSerie_[nSerie_++] = serie_[i].mdf;
+      if (esValida(serie_[i]) && nSerie_ < MAX_REPS_SERIE) {
+        mdfSerie_[nSerie_] = serie_[i].mdf; mnfSerie_[nSerie_] = serie_[i].mnf; nSerie_++;
+      }
     etapa_ = Etapa::MIDIENDO;
     nivel_ = Nivel::SIN_FATIGA;
     repsSobreUmbral_ = 0;
@@ -711,30 +755,78 @@ private:
   // Fatiga
   // ===========================================================================
   void actualizarFatiga() {
-    estimarMdfActual();
-    caida_ = 100.0f * (mdfRef_ - mdfActual_) / mdfRef_;
+    float ordMdf, ordMnf;
+    estimarRecta(mdfSerie_, nSerie_, mdfActual_, ordMdf, pendiente_);
+    float pendMnf;
+    estimarRecta(mnfSerie_, nSerie_, mnfActual_, ordMnf, pendMnf);
+
+    // Referencia: la congelada de la serie 1, o la de esta serie
+    float refMdf = mdfRef_, refMnf = mnfRef_;
+    if (refCongelada_) {
+      refMdf = refCongeladaMdf_;
+      refMnf = refCongeladaMnf_;
+    } else if (FATIGA_REF_DE_LA_RECTA && nSerie_ >= FATIGA_REPS_MIN_RECTA) {
+      refMdf = ordMdf;                         // valor de la recta en la primera rep válida
+      refMnf = ordMnf;
+    }
+    mdfRefUsada_ = refMdf;
+    mnfRefUsada_ = refMnf;
+
+    caidaMdf_ = refMdf > 0 ? 100.0f * (refMdf - mdfActual_) / refMdf : 0;
+    caidaMnf_ = refMnf > 0 ? 100.0f * (refMnf - mnfActual_) / refMnf : 0;
+    const float mnfEnEscalaMdf = caidaMnf_ / MNF_FACTOR_UMBRALES;   // así comparten los umbrales
+    switch (FATIGA_SENAL) {
+      case Senal::MDF:       caida_ = caidaMdf_; break;
+      case Senal::MNF:       caida_ = mnfEnEscalaMdf; break;
+      case Senal::MDF_Y_MNF: caida_ = caidaMdf_ < mnfEnEscalaMdf ? caidaMdf_ : mnfEnEscalaMdf; break;
+      case Senal::MDF_O_MNF: caida_ = caidaMdf_ > mnfEnEscalaMdf ? caidaMdf_ : mnfEnEscalaMdf; break;
+    }
     aplicarNivel(nivelPorCaida(caida_));
   }
 
-  // Recta MDF = a + b·i por mínimos cuadrados (i = número de repetición):
-  //   b = Σ(i − ī)(MDFi − MDF̄) / Σ(i − ī)²,  la recta pasa por (ī, MDF̄)
-  // MDF actual = valor de la recta en la última repetición.
-  void estimarMdfActual() {
-    const int n = nSerie_ < FATIGA_REPS_MEDIANA ? nSerie_ : FATIGA_REPS_MEDIANA;
-    mdfActual_ = mediana(mdfSerie_ + nSerie_ - n, n);
-    pendiente_ = 0;
-    if (nSerie_ < FATIGA_REPS_MIN_RECTA) return;
+  // Recta y = ordenada + pendiente·i (i = posición entre las reps válidas, la primera es 0).
+  // actual = valor de la recta en la última rep. Con menos de FATIGA_REPS_MIN_RECTA reps:
+  // actual = mediana de las últimas FATIGA_REPS_MEDIANA y ordenada = esa misma mediana.
+  void estimarRecta(const float *y, int n, float &actual, float &ordenada, float &pendiente) {
+    const int k = n < FATIGA_REPS_MEDIANA ? n : FATIGA_REPS_MEDIANA;
+    actual = n > 0 ? mediana(y + n - k, k) : 0;
+    ordenada = actual;
+    pendiente = 0;
+    if (n < FATIGA_REPS_MIN_RECTA) return;
 
-    const float iMedio = (nSerie_ - 1) / 2.0f;
-    float mdfMedia = 0, sxy = 0, sxx = 0;
-    for (int i = 0; i < nSerie_; i++) mdfMedia += mdfSerie_[i];
-    mdfMedia /= nSerie_;
-    for (int i = 0; i < nSerie_; i++) {
-      sxy += (i - iMedio) * (mdfSerie_[i] - mdfMedia);
-      sxx += (i - iMedio) * (i - iMedio);
+    if (FATIGA_RECTA_ROBUSTA) {
+      // Theil-Sen: pendiente = mediana de (y[j] − y[i]) / (j − i) para todos los pares i < j
+      int m = 0;
+      for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++) pares_[m++] = (y[j] - y[i]) / (float)(j - i);
+      pendiente = medianaLarga(pares_, m);
+      // ordenada = mediana de (y[i] − pendiente·i)
+      for (int i = 0; i < n; i++) aux_[i] = y[i] - pendiente * i;
+      ordenada = medianaLarga(aux_, n);
+    } else {
+      // Mínimos cuadrados: b = Σ(i − ī)(yi − ȳ) / Σ(i − ī)²
+      const float iMedio = (n - 1) / 2.0f;
+      float yMedia = 0, sxy = 0, sxx = 0;
+      for (int i = 0; i < n; i++) yMedia += y[i];
+      yMedia /= n;
+      for (int i = 0; i < n; i++) {
+        sxy += (i - iMedio) * (y[i] - yMedia);
+        sxx += (i - iMedio) * (i - iMedio);
+      }
+      pendiente = sxy / sxx;
+      ordenada = yMedia - pendiente * iMedio;
     }
-    pendiente_ = sxy / sxx;
-    if (FATIGA_USAR_RECTA) mdfActual_ = mdfMedia + pendiente_ * (nSerie_ - 1 - iMedio);
+    if (FATIGA_USAR_RECTA) actual = ordenada + pendiente * (n - 1);
+  }
+
+  // Mediana de muchos valores (desordena el arreglo: se le pasa un espacio de trabajo)
+  static float medianaLarga(float *v, int n) {
+    if (n <= 0) return 0;
+    std::nth_element(v, v + n / 2, v + n);
+    const float alta = v[n / 2];
+    if (n % 2) return alta;
+    const float baja = *std::max_element(v, v + n / 2);
+    return 0.5f * (baja + alta);
   }
 
   static Nivel nivelPorCaida(float caida) {
@@ -832,9 +924,13 @@ private:
     r.caida_pct = mdfRef_ > 0 ? caida_ : 0;
     r.mdf = ultima_.mdf;
     r.mnf = ultima_.mnf;
-    r.mdf_ref = mdfRef_;
+    r.mdf_ref = refCongelada_ || nSerie_ > 0 ? mdfRefUsada_ : mdfRef_;
     r.mdf_actual = mdfActual_;
     r.pendiente = pendiente_;
+    r.mnf_ref = refCongelada_ || nSerie_ > 0 ? mnfRefUsada_ : mnfRef_;
+    r.mnf_actual = mnfActual_;
+    r.caida_mdf_pct = mdfRef_ > 0 ? caidaMdf_ : 0;
+    r.caida_mnf_pct = mdfRef_ > 0 ? caidaMnf_ : 0;
     r.rms = repNueva_ ? ultima_.rms : envolvente_;
     r.repsCalibracion = (uint8_t)intentosCalibracion_;
     r.repNueva = repNueva_;

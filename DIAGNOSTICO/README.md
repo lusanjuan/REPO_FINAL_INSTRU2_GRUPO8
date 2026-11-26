@@ -1,86 +1,86 @@
 # Diagnóstico MyoSignals
 
-Tres scripts para la jornada de pruebas:
+Scripts para probar la ESP, analizar las grabaciones en la PC y comparar métodos de fatiga.
 
-| Script | Qué hace | Cuándo |
-|---|---|---|
-| `grabar.py` | Se conecta a la ESP, muestra la señal en vivo (liviana) y **guarda todo en CSV** | Durante cada prueba |
-| `analizar.py` | Recalcula en la PC, con la señal completa: MDF, MNF, RMS, tendencias, conteo independiente, comparación con la ESP. Hace los gráficos y un `diapo.png` | Se corre solo al cerrar `grabar.py` (o a mano) |
-| `comparar.py` | Junta todas las sesiones en una tabla y un gráfico | Al final del día |
+## Qué hay en esta carpeta
 
-`config.py` tiene lo que tiene que coincidir con el firmware (UUIDs, 2000 Hz, formato del paquete) y los colores.
+| Archivo | Para qué |
+|---|---|
+| `config.py` | lo que tiene que coincidir con la ESP (nombre BLE, UUIDs, 2000 Hz, banda 20–450 Hz) y los colores |
+| `grabar.py` | se conecta a la ESP por Bluetooth, muestra la señal en vivo y la guarda en `sesiones/` |
+| `analizar.py` | analiza una grabación o un CSV: MDF, MNF, RMS, repeticiones, gráficos, y compara los métodos |
+| `metodos.py` | los 6 métodos de fatiga que compara `analizar.py` (lo usa solo, no se corre) |
+| `comparar.py` | junta todas las grabaciones analizadas en una tabla y gráficos |
+| `requirements.txt` | las librerías |
+| `sesiones/` | acá quedan las grabaciones y los resultados (se crea solo) |
 
-## Antes de empezar
+## Una sola vez
 
 ```
 pip install -r requirements.txt
 ```
 
-En la ESP: `ENVIAR_DIAGNOSTICO = true` (en el .ino). **Cerrá la app web** (si está conectada, la PC no encuentra la ESP).
+## Uso de todos los días (desde la carpeta del repo)
 
-## Grabar una prueba
+### A) Ya tengo CSV grabados (formato `usuario,sexo,modo,muestra,t_s,mV,fatiga`)
 
+1. Poné los CSV en `DIAGNOSTICO\sesiones\csv\`. Que el nombre diga qué es, por ejemplo
+   `fatiga_lu.csv`, `fatiga_franco.csv`, `control_lu.csv` (control = sin llegar a la fatiga).
+2. Analizalos todos:
+   ```
+   .\.venv\Scripts\python.exe .\DIAGNOSTICO\analizar.py ".\DIAGNOSTICO\sesiones\csv\*.csv"
+   ```
+3. Compará, diciendo qué palabra tienen los controles en el nombre:
+   ```
+   .\.venv\Scripts\python.exe .\DIAGNOSTICO\comparar.py --control control
+   ```
+
+### B) Grabar con la ESP en vivo
+
+En la ESP: `ENVIAR_DIAGNOSTICO = true`. Cerrá la app web (si está conectada, la PC no ve la ESP).
 ```
-python grabar.py --etiqueta iso_lu --persona Lu --peso 4 --ejercicio "isometrico 90°"
+.\.venv\Scripts\python.exe .\DIAGNOSTICO\grabar.py --etiqueta fatiga_lu --persona Lu --peso 4
 ```
+Teclas: **S** START · **X** STOP · **M** marca ("acá sentí fatiga") · **Q** terminar.
+Al cerrar se analiza sola. Después, `comparar.py` como arriba.
 
-Al conectarse manda START solo (usá `--sin-start` si no querés). En la ventana:
+## Dónde mirar los resultados
 
-- **S** = START  ·  **X** = STOP  ·  **M** = marca ("acá sentí fatiga")  ·  **Q** = terminar
+Por cada grabación, en `<nombre>\analisis\`:
+- `resumen.txt`: las conclusiones con números (empezá por acá)
+- `senal.png`: señal, envolvente y repeticiones
+- `mdf_reps.png`: MDF, MNF y RMS por repetición
+- `metodos.png`: los 6 métodos lado a lado
+- `diapo.png`: figura lista para la presentación
 
-En la terminal aparece una línea por repetición y, cada 5 s, el estado del enlace (tienen que llegar ~20 paquetes/s y 0 perdidos).
+Entre todas, en `sesiones\comparacion\`:
+- `metodos_comparacion.png` y `.csv`: qué método avisa a tiempo y cuál da falsas alarmas
 
-Todo queda en `sesiones/<fecha>_<etiqueta>/`, y al cerrar se corre `analizar.py` sobre esa carpeta.
+## Los métodos que se comparan
 
-## Analizar / comparar
+Cada uno simula la ESP repetición por repetición y agrega un cambio al anterior:
 
-```
-python analizar.py ultima
-python analizar.py sesiones/20261127_101500_iso_lu
-python comparar.py              (todas)
-python comparar.py iso          (solo las que tengan "iso" en el nombre)
-```
+| | Método | Qué cambia |
+|---|---|---|
+| M0 | actual (ESP) | lo que hace hoy la ESP |
+| M1 | + Theil-Sen | recta robusta: una rep rara casi no la mueve |
+| M2 | + ref de la recta | la referencia sale de la recta, no de 3 reps sueltas |
+| M3 | + calidad | descarta reps saturadas, con movimiento o con poca señal |
+| M4 | + espectro limpio | resta el ruido de reposo y rellena el pozo del notch de 50 Hz |
+| M5 | + JASA | solo sube de nivel si la RMS no bajó |
 
-Resultados en `<sesion>/analisis/`: `resumen.txt` (las conclusiones con números), `reps.csv`, `ventanas.csv`, `senal.png`, `mdf_reps.png`, `espectros.png`, `validacion_esp.png`, `diapo.png` (1920×1080).
+Y cada uno con 4 señales: MDF · MNF (umbrales × 0,7) · MDF+MNF (caen las dos) · MDF o MNF (cae una).
 
-### Analizar un CSV sin correr `grabar.py`
+El mejor: llega a ALTA antes de la marca del usuario, en todas las sesiones con fatiga, y sin
+falsas alarmas en los controles. Los umbrales están al principio de `metodos.py`.
 
-Poné el archivo de señal en una carpeta de sesión, por ejemplo:
+## Protocolo para grabar
 
-```
-sesiones/entrada_manual/senal.csv
-```
+| Prueba | Nombre sugerido | Para qué |
+|---|---|---|
+| 20 s quieto, brazo apoyado | `reposo_...` | ruido del sistema |
+| 6–8 reps con el mismo peso, lejos del fallo | `control_...` | ver que NO avise (falsas alarmas) |
+| Serie hasta el fallo, ritmo parejo, marcando la fatiga | `fatiga_...` | ver que avise a tiempo |
+| Isométrica sostenida hasta no poder | `iso_...` | la prueba clásica de que la MDF baja |
 
-Para una entrada manual, usa el esquema siguiente. Los formatos anteriores con `n,mV` o `mV_procesada` también se mantienen aceptados por compatibilidad.
-
-Para datos manuales, el formato recomendado es exactamente:
-
-```
-usuario,sexo,modo,muestra,t_s,mV,fatiga
-```
-
-Debe haber una fila por muestra; `muestra` es el índice entero, `t_s` el tiempo en segundos y `mV` la señal. La frecuencia esperada es 2000 Hz. `usuario`, `sexo` y `modo` deben mantenerse constantes durante la sesión. `fatiga` debe ser `1` en las muestras desde que el usuario indica fatiga y `0` en las demás. El informe y `senal.png` muestran esos intervalos.
-
-Corré el análisis indicando esa carpeta:
-
-```
-python analizar.py sesiones/entrada_manual
-```
-
-Los archivos auxiliares (`detector.csv`, `resultados.csv`, `marcas.csv` y `meta.json`) son opcionales; sin ellos no habrá comparación contra resultados de la ESP. Los resultados se guardan en `sesiones/entrada_manual/analisis/`.
-
-## Protocolo sugerido
-
-Una sesión por prueba, con `--etiqueta` clara. Entre pruebas de fatiga, descanso de ≥ 5 min.
-
-| # | Prueba | Etiqueta | Qué valida | Qué mirar |
-|---|---|---|---|---|
-| 1 | Reposo 20 s, brazo apoyado (`--sin-start`) | `reposo` | Ruido del sistema | `ruido_base_mV` bajo (antes veíamos 6–8 mV) |
-| 2 | Reposo con OLED apagada (`PANTALLA_ACTIVA = false`, o desconectada) | `reposo_sin_oled` | ¿La OLED mete ruido? | Comparar ruido y espectro con la 1 |
-| 3 | 5 contracciones fuertes y cortas | `conteo` | Conteo de reps | ESP = PC = 5 |
-| 4 | Isométrica sostenida hasta no poder (codo 90°) | `iso` | **La MDF cae con la fatiga** (la prueba clásica) | Ventanas de 1 s: caída % y p |
-| 5 | Serie liviana, ~10 reps cómodas | `liviana` | Control: sin fatiga no debería caer | Caída chica, p alto |
-| 6 | Serie pesada al fallo, ritmo constante | `pesada` | Detección en dinámico | Caída, nivel final, marca M vs estado ESP |
-| 7 | (opcional) repetir 4 y 6 con otra persona | `iso_franco`, ... | Reproducibilidad | `comparar.py` |
-
-Para el pitch: `diapo.png` de la prueba 6 (o la 4) y `comparacion.png`.
+Hacen falta varios controles: sin ellos no se puede saber si un método da falsas alarmas.

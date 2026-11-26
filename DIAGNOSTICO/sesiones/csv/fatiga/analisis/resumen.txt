@@ -1,0 +1,17 @@
+Sesión fatiga
+Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 192.3 s.
+Ruido de base (envolvente, percentil 10): 4.0 mV; contracción (percentil 95): 110.9 mV; SNR 28.8 dB.
+Entrada cruda del ADC (mediana 669.0 mV, rango 0.0–1603.0 mV): se filtró en la PC (pasabanda 20–450 Hz + notch 50 Hz, como los scripts del grupo). Muestras en el piso (≤ 10 mV): 0.004 %; en el máximo: 0.0 %.
+Repeticiones contadas en la PC: 38 (no hay datos de la ESP para comparar).
+   Para la tendencia se usan 37: se descartaron 1 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.
+Serie 1 (37 reps): MDF 61.03 Hz → pendiente -0.067 Hz/rep (r = -0.123, p = 0.467, NO significativa); caída estimada 12.9 % → nivel 'moderada'. 
+   MNF: caída 11.2 % (p = 0.00646).  RMS: cambio +20.4 % (p = 0.00479).
+Ventanas de 1 s (142.2 s con contracción): MDF 54.1 → 48.8 Hz, caída 9.7 %, pendiente -0.0277 Hz/s (r = -0.152, p = 0.000285).
+Marca 'fatiga (usuario)' en 188.9 s: cerca de la rep 37.
+Métodos (espectro de ruido medido en 2 tramos de reposo de 1,5 s; reps que pasan el filtro de calidad: 38/38):
+   MDF       M0 +13 % (moderada) · M1 +10 % (alta en rep 21) · M2 +4 % (alta en rep 21) · M3 +4 % (alta en rep 21) · M4 +5 % (moderada) · M5 +5 % (moderada)
+   MNF       M0 +11 % (moderada) · M1 +10 % (moderada) · M2 +6 % (moderada) · M3 +6 % (moderada) · M4 +6 % (moderada) · M5 +6 % (moderada)
+   MDF+MNF   M0 +13 % (moderada) · M1 +10 % (moderada) · M2 +4 % (moderada) · M3 +4 % (moderada) · M4 +5 % (moderada) · M5 +5 % (moderada)
+   MDF o MNF M0 +16 % (moderada) · M1 +14 % (alta en rep 21) · M2 +8 % (alta en rep 21) · M3 +8 % (alta en rep 21) · M4 +8 % (moderada) · M5 +8 % (moderada)
+   (MNF con umbrales × 0.7; en MDF+MNF y MDF o MNF el % está en la escala de la MDF)
+   Marca de fatiga del usuario en 188.9 s (antes_marca > 0 = el aviso llegó antes).

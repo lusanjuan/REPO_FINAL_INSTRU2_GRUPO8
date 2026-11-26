@@ -1,0 +1,25 @@
+metodo,nombre,senal,sesiones_fatiga,llegan_a_alta,algun_aviso,alta_antes_de_marca,anticipacion_mediana_s,caida_final_mediana_pct,dispersion_mediana_pct,controles,falsas_alarmas
+M0,actual (ESP),MDF,3,0,2,0,,3.8,10.18,0,0
+M0,actual (ESP),MNF,3,0,1,0,,-1.3,4.8,0,0
+M0,actual (ESP),MDF+MNF,3,0,1,0,,-1.9,10.18,0,0
+M0,actual (ESP),MDF o MNF,3,0,2,0,,3.8,10.18,0,0
+M1,+ Theil-Sen,MDF,3,1,2,1,87.2,2.8,10.62,0,0
+M1,+ Theil-Sen,MNF,3,0,1,0,,1.0,2.94,0,0
+M1,+ Theil-Sen,MDF+MNF,3,0,1,0,,0.4,10.62,0,0
+M1,+ Theil-Sen,MDF o MNF,3,1,2,1,87.2,2.8,10.62,0,0
+M2,+ ref de la recta,MDF,3,2,2,2,46.2,4.1,10.62,0,0
+M2,+ ref de la recta,MNF,3,1,2,1,23.3,5.9,2.94,0,0
+M2,+ ref de la recta,MDF+MNF,3,1,2,1,5.3,4.1,10.62,0,0
+M2,+ ref de la recta,MDF o MNF,3,2,2,2,55.2,8.4,10.62,0,0
+M3,+ calidad,MDF,3,2,3,2,46.2,4.1,10.62,0,0
+M3,+ calidad,MNF,3,1,2,1,23.3,5.9,2.94,0,0
+M3,+ calidad,MDF+MNF,3,1,2,1,5.3,4.1,10.62,0,0
+M3,+ calidad,MDF o MNF,3,2,3,2,55.2,8.4,10.62,0,0
+M4,+ espectro limpio,MDF,3,1,3,1,9.2,4.8,10.59,0,0
+M4,+ espectro limpio,MNF,3,1,3,1,23.3,5.6,3.03,0,0
+M4,+ espectro limpio,MDF+MNF,3,1,3,1,9.2,4.8,10.59,0,0
+M4,+ espectro limpio,MDF o MNF,3,1,3,1,23.3,8.0,10.59,0,0
+M5,+ JASA (RMS),MDF,3,1,3,1,9.2,4.8,10.59,0,0
+M5,+ JASA (RMS),MNF,3,1,3,1,23.3,5.6,3.03,0,0
+M5,+ JASA (RMS),MDF+MNF,3,1,3,1,9.2,4.8,10.59,0,0
+M5,+ JASA (RMS),MDF o MNF,3,1,3,1,23.3,8.0,10.59,0,0

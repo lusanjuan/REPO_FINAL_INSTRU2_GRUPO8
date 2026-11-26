@@ -1,0 +1,25 @@
+metodo,nombre,senal,reps_usadas,reps_total,caida_final_pct,nivel_final,rep_leve,t_leve_s,antes_marca_leve_s,rep_moderada,t_moderada_s,antes_marca_moderada_s,rep_alta,t_alta_s,antes_marca_alta_s,dispersion_pct
+M0,actual (ESP),MDF,38,38,13.2,moderada,6,26.7,162.2,6,26.7,162.2,,,,10.18
+M0,actual (ESP),MNF,38,38,11.2,moderada,7,31.6,157.3,17,81.7,107.2,,,,4.8
+M0,actual (ESP),MDF+MNF,38,38,13.2,moderada,7,31.6,157.3,17,81.7,107.2,,,,10.18
+M0,actual (ESP),MDF o MNF,38,38,16.0,moderada,6,26.7,162.2,6,26.7,162.2,,,,10.18
+M1,+ Theil-Sen,MDF,38,38,10.4,alta,7,31.6,157.3,12,56.8,132.1,21.0,101.7,87.2,10.62
+M1,+ Theil-Sen,MNF,38,38,9.8,moderada,7,31.6,157.3,17,81.7,107.2,,,,4.7
+M1,+ Theil-Sen,MDF+MNF,38,38,10.4,moderada,7,31.6,157.3,17,81.7,107.2,,,,10.62
+M1,+ Theil-Sen,MDF o MNF,38,38,14.0,alta,7,31.6,157.3,12,56.8,132.1,21.0,101.7,87.2,10.62
+M2,+ ref de la recta,MDF,38,38,4.1,alta,7,31.6,157.3,15,71.7,117.2,21.0,101.7,87.2,10.62
+M2,+ ref de la recta,MNF,38,38,5.9,moderada,7,31.6,157.3,17,81.7,107.2,,,,4.7
+M2,+ ref de la recta,MDF+MNF,38,38,4.1,moderada,7,31.6,157.3,17,81.7,107.2,,,,10.62
+M2,+ ref de la recta,MDF o MNF,38,38,8.4,alta,7,31.6,157.3,15,71.7,117.2,21.0,101.7,87.2,10.62
+M3,+ calidad,MDF,38,38,4.1,alta,7,31.6,157.3,15,71.7,117.2,21.0,101.7,87.2,10.62
+M3,+ calidad,MNF,38,38,5.9,moderada,7,31.6,157.3,17,81.7,107.2,,,,4.7
+M3,+ calidad,MDF+MNF,38,38,4.1,moderada,7,31.6,157.3,17,81.7,107.2,,,,10.62
+M3,+ calidad,MDF o MNF,38,38,8.4,alta,7,31.6,157.3,15,71.7,117.2,21.0,101.7,87.2,10.62
+M4,+ espectro limpio,MDF,38,38,4.8,moderada,7,31.6,157.3,16,76.6,112.3,,,,10.59
+M4,+ espectro limpio,MNF,38,38,5.6,moderada,16,76.6,112.3,20,96.8,92.1,,,,4.65
+M4,+ espectro limpio,MDF+MNF,38,38,4.8,moderada,16,76.6,112.3,20,96.8,92.1,,,,10.59
+M4,+ espectro limpio,MDF o MNF,38,38,8.0,moderada,7,31.6,157.3,16,76.6,112.3,,,,10.59
+M5,+ JASA (RMS),MDF,38,38,4.8,moderada,15,71.7,117.2,15,71.7,117.2,,,,10.59
+M5,+ JASA (RMS),MNF,38,38,5.6,moderada,16,76.6,112.3,20,96.8,92.1,,,,4.65
+M5,+ JASA (RMS),MDF+MNF,38,38,4.8,moderada,16,76.6,112.3,20,96.8,92.1,,,,10.59
+M5,+ JASA (RMS),MDF o MNF,38,38,8.0,moderada,15,71.7,117.2,15,71.7,117.2,,,,10.59

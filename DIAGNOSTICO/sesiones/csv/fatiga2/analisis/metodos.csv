@@ -1,0 +1,25 @@
+metodo,nombre,senal,reps_usadas,reps_total,caida_final_pct,nivel_final,rep_leve,t_leve_s,antes_marca_leve_s,rep_moderada,t_moderada_s,antes_marca_moderada_s,rep_alta,t_alta_s,antes_marca_alta_s,dispersion_pct
+M0,actual (ESP),MDF,25,27,-1.9,sin,,,,,,,,,,16.6
+M0,actual (ESP),MNF,25,27,-1.3,sin,,,,,,,,,,4.96
+M0,actual (ESP),MDF+MNF,25,27,-1.9,sin,,,,,,,,,,16.6
+M0,actual (ESP),MDF o MNF,25,27,-1.8,sin,,,,,,,,,,16.6
+M1,+ Theil-Sen,MDF,25,27,0.4,sin,,,,,,,,,,15.54
+M1,+ Theil-Sen,MNF,25,27,1.0,sin,,,,,,,,,,2.94
+M1,+ Theil-Sen,MDF+MNF,25,27,0.4,sin,,,,,,,,,,15.54
+M1,+ Theil-Sen,MDF o MNF,25,27,1.4,sin,,,,,,,,,,15.54
+M2,+ ref de la recta,MDF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54
+M2,+ ref de la recta,MNF,25,27,18.9,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,2.94
+M2,+ ref de la recta,MDF+MNF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54
+M2,+ ref de la recta,MDF o MNF,25,27,27.0,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,15.54
+M3,+ calidad,MDF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54
+M3,+ calidad,MNF,25,27,18.9,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,2.94
+M3,+ calidad,MDF+MNF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54
+M3,+ calidad,MDF o MNF,25,27,27.0,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,15.54
+M4,+ espectro limpio,MDF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1
+M4,+ espectro limpio,MNF,25,27,19.3,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,3.03
+M4,+ espectro limpio,MDF+MNF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1
+M4,+ espectro limpio,MDF o MNF,25,27,27.6,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,11.1
+M5,+ JASA (RMS),MDF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1
+M5,+ JASA (RMS),MNF,25,27,19.3,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,3.03
+M5,+ JASA (RMS),MDF+MNF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1
+M5,+ JASA (RMS),MDF o MNF,25,27,27.6,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,11.1

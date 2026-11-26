@@ -1,9 +1,13 @@
 """comparar.py — Junta todas las sesiones analizadas en una tabla y un gráfico.
 
 Uso:
-    python comparar.py                       (todas las sesiones con analisis/)
+    python comparar.py                       (todas las sesiones con analisis/, también en subcarpetas)
     python comparar.py isometrica curl_4kg   (solo las que tengan esas palabras en el nombre)
-Deja en  sesiones/comparacion/ :  comparacion.csv  y  comparacion.png
+    python comparar.py --control joaco liviana   (esas sesiones son controles SIN fatiga:
+                                                  cualquier aviso ahí cuenta como falsa alarma)
+Deja en  sesiones/comparacion/ :
+    comparacion.csv / .png               una fila por sesión
+    metodos_comparacion.csv / .png       cada método × señal sobre todas las sesiones
 """
 import glob
 import json
@@ -20,7 +24,7 @@ COLORES = [C.LIMA, C.NARANJA, C.CLARO, C.AMARILLO, C.VERDE, C.GRIS, "#5AC8FA", "
 
 def cargar(filtros):
     filas, curvas = [], []
-    for resumen in sorted(glob.glob(os.path.join(C.CARPETA_SESIONES, "*", "analisis", "resumen.json"))):
+    for resumen in sorted(glob.glob(os.path.join(C.CARPETA_SESIONES, "**", "analisis", "resumen.json"), recursive=True)):
         carpeta = os.path.dirname(os.path.dirname(resumen))
         nombre = os.path.basename(carpeta)
         if filtros and not any(f in nombre for f in filtros):
@@ -83,7 +87,78 @@ def graficar(tabla, curvas, salida):
     fig.savefig(os.path.join(salida, "comparacion.png"), dpi=110)
 
 
+def comparar_metodos(filtros, controles):
+    """Junta los metodos.csv: para cada método × señal, cuántas sesiones avisan antes de la marca,
+    con cuánta anticipación, y cuántas falsas alarmas hay en los controles."""
+    partes = []
+    for archivo in sorted(glob.glob(os.path.join(C.CARPETA_SESIONES, "**", "analisis", "metodos.csv"), recursive=True)):
+        nombre = os.path.basename(os.path.dirname(os.path.dirname(archivo)))
+        if filtros and not any(f in nombre for f in filtros):
+            continue
+        d = pd.read_csv(archivo)
+        d["sesion"] = nombre
+        d["control"] = any(c.lower() in nombre.lower() for c in controles)
+        partes.append(d)
+    if not partes:
+        return None
+    d = pd.concat(partes, ignore_index=True)
+    filas = []
+    for (metodo, senal), g in d.groupby(["metodo", "senal"], sort=False):
+        fat, ctl = g[~g.control], g[g.control]
+        con_marca = fat[fat.columns[fat.columns.str.startswith("antes_marca_alta")]].iloc[:, 0] \
+            if any(fat.columns.str.startswith("antes_marca_alta")) else pd.Series(dtype=float)
+        con_marca = con_marca.dropna() if len(con_marca) else con_marca
+        filas.append({
+            "metodo": metodo, "nombre": g.nombre.iloc[0], "senal": senal,
+            "sesiones_fatiga": int(len(fat)),
+            "llegan_a_alta": int(fat.rep_alta.notna().sum()),
+            "algun_aviso": int((fat.nivel_final != "sin").sum()),
+            "alta_antes_de_marca": int((con_marca > 0).sum()) if len(con_marca) else 0,
+            "anticipacion_mediana_s": round(float(con_marca.median()), 1) if len(con_marca) else np.nan,
+            "caida_final_mediana_pct": round(float(fat.caida_final_pct.median()), 1) if len(fat) else np.nan,
+            "dispersion_mediana_pct": round(float(g.dispersion_pct.median()), 2),
+            "controles": int(len(ctl)),
+            "falsas_alarmas": int((ctl.nivel_final != "sin").sum()),
+        })
+    return pd.DataFrame(filas), d
+
+
+def graficar_metodos(t, salida):
+    import matplotlib
+    if not os.environ.get("DISPLAY") and sys.platform.startswith("linux"):
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    C.aplicar_estilo()
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(16, 5.5))
+    metodos_ = list(dict.fromkeys(t.metodo))
+    x = np.arange(len(metodos_))
+    for j, (senal, color) in enumerate(zip(["MDF", "MNF", "MDF+MNF", "MDF o MNF"], [C.GRIS, C.CLARO, C.LIMA, C.NARANJA])):
+        g = t[t.senal == senal].set_index("metodo").reindex(metodos_)
+        a1.bar(x + (j - 1.5) * 0.2, g.llegan_a_alta, 0.2, color=color, label=senal)
+        a2.bar(x + (j - 1.5) * 0.2, g.dispersion_mediana_pct, 0.2, color=color, label=senal)
+    etiquetas = [f"{m}\n{t[t.metodo == m].nombre.iloc[0]}" for m in metodos_]
+    for a, titulo in ((a1, f"Sesiones con fatiga que llegan a ALTA (de {int(t.sesiones_fatiga.max())})"),
+                      (a2, "Dispersión de las reps alrededor de la recta (% · menos = más estable)")):
+        a.set_xticks(x)
+        a.set_xticklabels(etiquetas, fontsize=8)
+        a.set_title(titulo)
+        a.legend(fontsize=8)
+        a.grid(axis="x", visible=False)
+        a.set_axisbelow(True)
+        a.set_ylim(0, a.get_ylim()[1] * 1.3)                 # lugar para la leyenda
+    from matplotlib.ticker import MaxNLocator
+    a1.yaxis.set_major_locator(MaxNLocator(integer=True))
+    fig.tight_layout()
+    fig.savefig(os.path.join(salida, "metodos_comparacion.png"), dpi=110)
+
+
 def main():
+    args = sys.argv[1:]
+    controles = []
+    if "--control" in args:
+        i = args.index("--control")
+        controles, args = args[i + 1:], args[:i]
+    sys.argv = [sys.argv[0]] + args
     tabla, curvas = cargar(sys.argv[1:])
     if tabla.empty:
         sys.exit("No hay sesiones analizadas. Corré primero analizar.py.")
@@ -95,6 +170,17 @@ def main():
     with pd.option_context("display.width", 200, "display.max_columns", 20):
         print(tabla[columnas].to_string(index=False))
     graficar(tabla, curvas, salida)
+    m = comparar_metodos(sys.argv[1:], controles)
+    if m is not None:
+        t, todo = m
+        t.to_csv(os.path.join(salida, "metodos_comparacion.csv"), index=False)
+        todo.to_csv(os.path.join(salida, "metodos_todas_las_sesiones.csv"), index=False)
+        cols = ["metodo", "nombre", "senal", "llegan_a_alta", "alta_antes_de_marca", "anticipacion_mediana_s",
+                "caida_final_mediana_pct", "dispersion_mediana_pct", "falsas_alarmas"]
+        print("\n=== Métodos sobre todas las sesiones ===" + (f"  (controles: {', '.join(controles)})" if controles else ""))
+        with pd.option_context("display.width", 220, "display.max_columns", 20):
+            print(t[cols].to_string(index=False))
+        graficar_metodos(t, salida)
     print(f"\nArchivos en {salida}")
 
 

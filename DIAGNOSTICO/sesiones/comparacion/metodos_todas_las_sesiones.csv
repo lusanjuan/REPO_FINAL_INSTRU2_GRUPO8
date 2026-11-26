@@ -1,0 +1,73 @@
+metodo,nombre,senal,reps_usadas,reps_total,caida_final_pct,nivel_final,rep_leve,t_leve_s,antes_marca_leve_s,rep_moderada,t_moderada_s,antes_marca_moderada_s,rep_alta,t_alta_s,antes_marca_alta_s,dispersion_pct,sesion,control
+M0,actual (ESP),MDF,25,27,-1.9,sin,,,,,,,,,,16.6,fatiga2,False
+M0,actual (ESP),MNF,25,27,-1.3,sin,,,,,,,,,,4.96,fatiga2,False
+M0,actual (ESP),MDF+MNF,25,27,-1.9,sin,,,,,,,,,,16.6,fatiga2,False
+M0,actual (ESP),MDF o MNF,25,27,-1.8,sin,,,,,,,,,,16.6,fatiga2,False
+M1,+ Theil-Sen,MDF,25,27,0.4,sin,,,,,,,,,,15.54,fatiga2,False
+M1,+ Theil-Sen,MNF,25,27,1.0,sin,,,,,,,,,,2.94,fatiga2,False
+M1,+ Theil-Sen,MDF+MNF,25,27,0.4,sin,,,,,,,,,,15.54,fatiga2,False
+M1,+ Theil-Sen,MDF o MNF,25,27,1.4,sin,,,,,,,,,,15.54,fatiga2,False
+M2,+ ref de la recta,MDF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54,fatiga2,False
+M2,+ ref de la recta,MNF,25,27,18.9,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,2.94,fatiga2,False
+M2,+ ref de la recta,MDF+MNF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54,fatiga2,False
+M2,+ ref de la recta,MDF o MNF,25,27,27.0,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,15.54,fatiga2,False
+M3,+ calidad,MDF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54,fatiga2,False
+M3,+ calidad,MNF,25,27,18.9,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,2.94,fatiga2,False
+M3,+ calidad,MDF+MNF,25,27,21.9,alta,20.0,63.1,30.3,20.0,63.1,30.3,26.0,88.1,5.3,15.54,fatiga2,False
+M3,+ calidad,MDF o MNF,25,27,27.0,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,15.54,fatiga2,False
+M4,+ espectro limpio,MDF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1,fatiga2,False
+M4,+ espectro limpio,MNF,25,27,19.3,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,3.03,fatiga2,False
+M4,+ espectro limpio,MDF+MNF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1,fatiga2,False
+M4,+ espectro limpio,MDF o MNF,25,27,27.6,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,11.1,fatiga2,False
+M5,+ JASA (RMS),MDF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1,fatiga2,False
+M5,+ JASA (RMS),MNF,25,27,19.3,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,3.03,fatiga2,False
+M5,+ JASA (RMS),MDF+MNF,25,27,22.5,alta,20.0,63.1,30.3,20.0,63.1,30.3,25.0,84.2,9.2,11.1,fatiga2,False
+M5,+ JASA (RMS),MDF o MNF,25,27,27.6,alta,18.0,56.0,37.4,20.0,63.1,30.3,22.0,70.1,23.3,11.1,fatiga2,False
+M0,actual (ESP),MDF,38,38,13.2,moderada,6.0,26.7,162.2,6.0,26.7,162.2,,,,10.18,fatiga,False
+M0,actual (ESP),MNF,38,38,11.2,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,4.8,fatiga,False
+M0,actual (ESP),MDF+MNF,38,38,13.2,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,10.18,fatiga,False
+M0,actual (ESP),MDF o MNF,38,38,16.0,moderada,6.0,26.7,162.2,6.0,26.7,162.2,,,,10.18,fatiga,False
+M1,+ Theil-Sen,MDF,38,38,10.4,alta,7.0,31.6,157.3,12.0,56.8,132.1,21.0,101.7,87.2,10.62,fatiga,False
+M1,+ Theil-Sen,MNF,38,38,9.8,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,4.7,fatiga,False
+M1,+ Theil-Sen,MDF+MNF,38,38,10.4,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,10.62,fatiga,False
+M1,+ Theil-Sen,MDF o MNF,38,38,14.0,alta,7.0,31.6,157.3,12.0,56.8,132.1,21.0,101.7,87.2,10.62,fatiga,False
+M2,+ ref de la recta,MDF,38,38,4.1,alta,7.0,31.6,157.3,15.0,71.7,117.2,21.0,101.7,87.2,10.62,fatiga,False
+M2,+ ref de la recta,MNF,38,38,5.9,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,4.7,fatiga,False
+M2,+ ref de la recta,MDF+MNF,38,38,4.1,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,10.62,fatiga,False
+M2,+ ref de la recta,MDF o MNF,38,38,8.4,alta,7.0,31.6,157.3,15.0,71.7,117.2,21.0,101.7,87.2,10.62,fatiga,False
+M3,+ calidad,MDF,38,38,4.1,alta,7.0,31.6,157.3,15.0,71.7,117.2,21.0,101.7,87.2,10.62,fatiga,False
+M3,+ calidad,MNF,38,38,5.9,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,4.7,fatiga,False
+M3,+ calidad,MDF+MNF,38,38,4.1,moderada,7.0,31.6,157.3,17.0,81.7,107.2,,,,10.62,fatiga,False
+M3,+ calidad,MDF o MNF,38,38,8.4,alta,7.0,31.6,157.3,15.0,71.7,117.2,21.0,101.7,87.2,10.62,fatiga,False
+M4,+ espectro limpio,MDF,38,38,4.8,moderada,7.0,31.6,157.3,16.0,76.6,112.3,,,,10.59,fatiga,False
+M4,+ espectro limpio,MNF,38,38,5.6,moderada,16.0,76.6,112.3,20.0,96.8,92.1,,,,4.65,fatiga,False
+M4,+ espectro limpio,MDF+MNF,38,38,4.8,moderada,16.0,76.6,112.3,20.0,96.8,92.1,,,,10.59,fatiga,False
+M4,+ espectro limpio,MDF o MNF,38,38,8.0,moderada,7.0,31.6,157.3,16.0,76.6,112.3,,,,10.59,fatiga,False
+M5,+ JASA (RMS),MDF,38,38,4.8,moderada,15.0,71.7,117.2,15.0,71.7,117.2,,,,10.59,fatiga,False
+M5,+ JASA (RMS),MNF,38,38,5.6,moderada,16.0,76.6,112.3,20.0,96.8,92.1,,,,4.65,fatiga,False
+M5,+ JASA (RMS),MDF+MNF,38,38,4.8,moderada,16.0,76.6,112.3,20.0,96.8,92.1,,,,10.59,fatiga,False
+M5,+ JASA (RMS),MDF o MNF,38,38,8.0,moderada,15.0,71.7,117.2,15.0,71.7,117.2,,,,10.59,fatiga,False
+M0,actual (ESP),MDF,18,18,3.8,moderada,12.0,35.3,,12.0,35.3,,,,,8.66,nofatiga,False
+M0,actual (ESP),MNF,18,18,-1.8,sin,,,,,,,,,,2.37,nofatiga,False
+M0,actual (ESP),MDF+MNF,18,18,-2.6,sin,,,,,,,,,,8.66,nofatiga,False
+M0,actual (ESP),MDF o MNF,18,18,3.8,moderada,12.0,35.3,,12.0,35.3,,,,,8.66,nofatiga,False
+M1,+ Theil-Sen,MDF,18,18,2.8,leve,12.0,35.3,,,,,,,,8.41,nofatiga,False
+M1,+ Theil-Sen,MNF,18,18,-3.2,sin,,,,,,,,,,2.46,nofatiga,False
+M1,+ Theil-Sen,MDF+MNF,18,18,-4.5,sin,,,,,,,,,,8.41,nofatiga,False
+M1,+ Theil-Sen,MDF o MNF,18,18,2.8,leve,12.0,35.3,,,,,,,,8.41,nofatiga,False
+M2,+ ref de la recta,MDF,18,18,-3.3,sin,,,,,,,,,,8.41,nofatiga,False
+M2,+ ref de la recta,MNF,18,18,-3.6,sin,,,,,,,,,,2.46,nofatiga,False
+M2,+ ref de la recta,MDF+MNF,18,18,-5.2,sin,,,,,,,,,,8.41,nofatiga,False
+M2,+ ref de la recta,MDF o MNF,18,18,-3.3,sin,,,,,,,,,,8.41,nofatiga,False
+M3,+ calidad,MDF,15,18,-0.7,moderada,12.0,35.3,,12.0,35.3,,,,,6.6,nofatiga,False
+M3,+ calidad,MNF,15,18,-2.8,sin,,,,,,,,,,2.1,nofatiga,False
+M3,+ calidad,MDF+MNF,15,18,-4.1,sin,,,,,,,,,,6.6,nofatiga,False
+M3,+ calidad,MDF o MNF,15,18,-0.7,moderada,12.0,35.3,,12.0,35.3,,,,,6.6,nofatiga,False
+M4,+ espectro limpio,MDF,15,18,-1.9,moderada,10.0,30.1,,12.0,35.3,,,,,10.25,nofatiga,False
+M4,+ espectro limpio,MNF,15,18,-3.1,leve,12.0,35.3,,,,,,,,2.38,nofatiga,False
+M4,+ espectro limpio,MDF+MNF,15,18,-4.4,leve,12.0,35.3,,,,,,,,10.25,nofatiga,False
+M4,+ espectro limpio,MDF o MNF,15,18,-1.9,moderada,10.0,30.1,,12.0,35.3,,,,,10.25,nofatiga,False
+M5,+ JASA (RMS),MDF,15,18,-1.9,moderada,12.0,35.3,,12.0,35.3,,,,,10.25,nofatiga,False
+M5,+ JASA (RMS),MNF,15,18,-3.1,leve,12.0,35.3,,,,,,,,2.38,nofatiga,False
+M5,+ JASA (RMS),MDF+MNF,15,18,-4.4,leve,12.0,35.3,,,,,,,,10.25,nofatiga,False
+M5,+ JASA (RMS),MDF o MNF,15,18,-1.9,moderada,12.0,35.3,,12.0,35.3,,,,,10.25,nofatiga,False
