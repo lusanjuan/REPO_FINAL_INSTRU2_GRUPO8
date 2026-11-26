@@ -8,7 +8,8 @@ Guarda todo en  sesiones/<fecha>_<etiqueta>/ :
     meta.json        etiqueta, persona, peso, ejercicio, notas, duración, paquetes perdidos
 Al cerrar la ventana corre analizar.py sobre la sesión (salvo con --sin-analizar).
 
-Teclas en la ventana:   S = START (iniciar serie)   X = STOP   M = marca   Q = terminar
+Teclas en la ventana:   N = NUEVA SESIÓN (serie 1, calibra)   S = START (serie siguiente, misma referencia)
+                        X = STOP   M = marca   Q = terminar
 
 Uso:
     python grabar.py --etiqueta isometrica --persona Lu --peso 4 --ejercicio "curl"
@@ -187,7 +188,7 @@ class EnlaceBLE:
         if self._loop and self._cliente:
             asyncio.run_coroutine_threadsafe(self._cliente.write_gatt_char(C.UUID_COMANDO, cmd, response=True),
                                              self._loop)
-            print("  → START" if cmd == b"I" else "  → STOP")
+            print({b"I": "  → START (misma referencia)", b"N": "  → NUEVA SESIÓN (calibra)", b"S": "  → STOP"}[cmd])
 
     async def _correr(self):
         from bleak import BleakClient, BleakScanner
@@ -200,11 +201,11 @@ class EnlaceBLE:
         async with BleakClient(disp) as cliente:
             self._loop, self._cliente = asyncio.get_running_loop(), cliente
             self.estado = "Conectada"
-            print("Conectada.  Teclas: S = START   X = STOP   M = marca   Q = terminar")
+            print("Conectada.  Teclas: N = nueva sesión   S = START serie   X = STOP   M = marca   Q = terminar")
             await cliente.start_notify(C.UUID_DIAGNOSTICO, lambda _, d: self.receptor.al_diagnostico(d))
             await cliente.start_notify(C.UUID_FATIGA, lambda _, d: self.receptor.al_resultado(d))
             if self.iniciar:
-                self.mandar(b"I")
+                self.mandar(b"N")                     # cada grabación arranca una sesión nueva
             inicio = ultimo_informe = self._loop.time()
             antes = 0
             while not self.cerrar.is_set():
@@ -257,12 +258,14 @@ def mostrar(receptor, enlace):
     fuerte = C.titulo_fuerte()
     t_estado = fig.text(0.06, 0.885, "", fontsize=30, color=C.GRIS, animated=True, **fuerte)
     t_datos = fig.text(0.06, 0.825, "", fontsize=13, color=C.CLARO, animated=True)
-    fig.text(0.98, 0.94, "S START   X STOP   M marca   Q terminar", ha="right", fontsize=10, color=C.GRIS)
+    fig.text(0.98, 0.94, "N sesión nueva   S serie   X STOP   M marca   Q terminar", ha="right", fontsize=10, color=C.GRIS)
     ultimo_reescalado = [0.0]
 
     def tecla(ev):
         k = (ev.key or "").lower()
-        if k == "s":
+        if k == "n":
+            enlace.mandar(b"N")
+        elif k == "s":
             enlace.mandar(b"I")
         elif k == "x":
             enlace.mandar(b"S")
@@ -323,7 +326,7 @@ def main():
     p.add_argument("--ejercicio", default="curl de bíceps")
     p.add_argument("--notas", default="")
     p.add_argument("--duracion", type=float, default=0, help="segundos (0 = hasta cerrar la ventana)")
-    p.add_argument("--sin-start", action="store_true", help="no mandar START al conectar")
+    p.add_argument("--sin-start", action="store_true", help="no mandar NUEVA SESIÓN al conectar")
     p.add_argument("--sin-analizar", action="store_true", help="no correr analizar.py al terminar")
     a = p.parse_args()
 

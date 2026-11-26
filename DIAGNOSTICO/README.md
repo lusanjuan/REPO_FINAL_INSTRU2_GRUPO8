@@ -41,7 +41,7 @@ En la ESP: `ENVIAR_DIAGNOSTICO = true`. Cerrá la app web (si está conectada, l
 ```
 .\.venv\Scripts\python.exe .\DIAGNOSTICO\grabar.py --etiqueta fatiga_lu --persona Lu --peso 4
 ```
-Teclas: **S** START · **X** STOP · **M** marca ("acá sentí fatiga") · **Q** terminar.
+Teclas: **N** sesión nueva (calibra) · **S** serie siguiente (misma referencia) · **X** STOP · **M** marca ("acá sentí fatiga") · **Q** terminar.
 Al cerrar se analiza sola. Después, `comparar.py` como arriba.
 
 ## Dónde mirar los resultados
