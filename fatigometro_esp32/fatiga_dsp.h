@@ -90,11 +90,8 @@ constexpr float FILTRO_F_ALTA      = 120.0f;   // pasabajos [Hz]
 constexpr bool  NOTCH_ACTIVO       = true;     // notch para la interferencia de la red
 constexpr float NOTCH_F            = 50.0f;    // [Hz]
 constexpr float NOTCH_Q            = 10.0f;    // más alto = notch más angosto
-constexpr int   NOTCH_ARMONICOS    = 10;        // cuántos notches: 50, 100, 150 ... 400 Hz.
-                                               //   Los armónicos de la red (sobre todo 150 Hz) entran cuando
-                                               //   un electrodo hace mal contacto. 1 = solo 50 Hz (como antes).
-                                               //   El armónico k usa Q = NOTCH_Q·k: todos sacan la misma
-                                               //   franja de 5 Hz, así se pierde poco del sEMG.
+constexpr int   NOTCH_ARMONICOS    = 8;         // 50, 100, 150 ... 400 Hz (banda del análisis en PC).
+                                               //   El armónico k usa Q = NOTCH_Q·k: ancho aprox. constante.
 constexpr float FILTRO_ESPERA_S    = 1.0f;     // tiempo para que se asienten los filtros al prender
 
 // ---- Recorte de picos (artefactos) ----
@@ -189,6 +186,7 @@ static_assert((1 << LOG2_NFFT) == NFFT, "NFFT tiene que ser 2^LOG2_NFFT");
 static_assert(REF_REPS_OBSERVAR >= REF_REPS, "REF_REPS_OBSERVAR tiene que ser >= REF_REPS");
 static_assert(REF_INTENTOS_MAX >= REF_REPS_OBSERVAR, "REF_INTENTOS_MAX tiene que ser >= REF_REPS_OBSERVAR");
 static_assert(NOTCH_ARMONICOS >= 1, "NOTCH_ARMONICOS tiene que ser >= 1");
+static_assert(NOTCH_F * NOTCH_ARMONICOS < FS / 2.0f, "los notches tienen que quedar bajo Nyquist");
 static_assert(REF_REPS <= 16, "REF_REPS: la mediana corta admite hasta 16 valores");
 static_assert(MUESTRAS_ESPECTRO + ENV_PASO * BLOQUES_ENV < BUF_N, "el buffer no alcanza para la ventana");
 
@@ -466,7 +464,8 @@ private:
     filtros_[nFiltros_++].disenar(Biquad::PASABAJOS, FILTRO_F_ALTA, q2, FS);
     if (NOTCH_ACTIVO)
       for (int k = 1; k <= NOTCH_ARMONICOS; k++)
-        if (k * NOTCH_F < FILTRO_F_ALTA)
+        // El pasabajos atenúa gradualmente; no debe impedir el notch de 150 Hz y otros armónicos.
+        if (k * NOTCH_F < FS / 2.0f)
           filtros_[nFiltros_++].disenar(Biquad::NOTCH, k * NOTCH_F, NOTCH_Q * k, FS);
   }
 
