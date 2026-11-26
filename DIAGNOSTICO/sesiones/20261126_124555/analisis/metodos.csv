@@ -1,0 +1,25 @@
+metodo,nombre,senal,reps_usadas,reps_total,caida_final_pct,nivel_final,rep_leve,t_leve_s,rep_moderada,t_moderada_s,rep_alta,t_alta_s,dispersion_pct
+M0,actual (ESP),MDF,29,29,5.6,moderada,12,32.1,16.0,41.6,,,13.55
+M0,actual (ESP),MNF,29,29,4.3,moderada,11,29.6,16.0,41.6,,,5.51
+M0,actual (ESP),MDF+MNF,29,29,5.6,moderada,12,32.1,16.0,41.6,,,13.55
+M0,actual (ESP),MDF o MNF,29,29,6.2,moderada,11,29.6,16.0,41.6,,,13.55
+M1,+ Theil-Sen,MDF,29,29,8.6,moderada,12,32.1,12.0,32.1,,,13.43
+M1,+ Theil-Sen,MNF,29,29,4.8,moderada,11,29.6,14.0,37.1,,,5.58
+M1,+ Theil-Sen,MDF+MNF,29,29,6.9,moderada,12,32.1,14.0,37.1,,,13.43
+M1,+ Theil-Sen,MDF o MNF,29,29,8.6,moderada,11,29.6,13.0,34.5,,,13.43
+M2,+ ref de la recta,MDF,29,29,3.1,moderada,12,32.1,12.0,32.1,,,13.43
+M2,+ ref de la recta,MNF,29,29,1.6,moderada,10,27.4,12.0,32.1,,,5.58
+M2,+ ref de la recta,MDF+MNF,29,29,2.4,moderada,12,32.1,12.0,32.1,,,13.43
+M2,+ ref de la recta,MDF o MNF,29,29,3.1,moderada,10,27.4,12.0,32.1,,,13.43
+M3,+ calidad,MDF,29,29,3.1,moderada,12,32.1,12.0,32.1,,,13.43
+M3,+ calidad,MNF,29,29,1.6,moderada,10,27.4,12.0,32.1,,,5.58
+M3,+ calidad,MDF+MNF,29,29,2.4,moderada,12,32.1,12.0,32.1,,,13.43
+M3,+ calidad,MDF o MNF,29,29,3.1,moderada,10,27.4,12.0,32.1,,,13.43
+M4,+ espectro limpio,MDF,29,29,2.5,moderada,12,32.1,14.0,37.1,,,9.26
+M4,+ espectro limpio,MNF,29,29,1.8,moderada,11,29.6,11.0,29.6,,,5.48
+M4,+ espectro limpio,MDF+MNF,29,29,2.5,moderada,12,32.1,14.0,37.1,,,9.26
+M4,+ espectro limpio,MDF o MNF,29,29,2.5,moderada,11,29.6,11.0,29.6,,,9.26
+M5,+ JASA (RMS),MDF,29,29,2.5,leve,12,32.1,,,,,9.26
+M5,+ JASA (RMS),MNF,29,29,1.8,moderada,11,29.6,11.0,29.6,,,5.48
+M5,+ JASA (RMS),MDF+MNF,29,29,2.5,leve,12,32.1,,,,,9.26
+M5,+ JASA (RMS),MDF o MNF,29,29,2.5,moderada,11,29.6,11.0,29.6,,,9.26
