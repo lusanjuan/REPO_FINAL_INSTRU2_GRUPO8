@@ -35,7 +35,7 @@ ETAPAS = ["ESPERANDO", "RELAJA", "CALIBRANDO", "MIDIENDO", "SIN REFERENCIA"]
 # =============================================================================
 # Análisis offline (mismo método que la ESP, para poder compararlos)
 # =============================================================================
-BANDA_HZ = (30, 450)         # banda para MDF y MNF
+BANDA_HZ = (20, 450)         # banda para MDF y MNF
 NFFT = 512                   # tramos de Welch
 VENTANA_REP_S = 1.5          # ventana del espectro, centrada en el pico de cada repetición
 VENTANA_DESLIZANTE_S = 1.0   # MDF/MNF continuas a lo largo del registro

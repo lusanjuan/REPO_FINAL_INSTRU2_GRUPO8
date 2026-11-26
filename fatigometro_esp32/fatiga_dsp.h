@@ -19,15 +19,16 @@
 //   ESPERANDO       No hay serie en curso (al prender, o después de STOP).
 //   RELAJA          Espera REPOSO_DURACION_S seguidos con el brazo quieto y mide
 //                   el nivel de reposo. Lo anterior (acomodarse) se ignora.
-//   CALIBRANDO      Cuenta repeticiones. Cuando las últimas REF_REPS son parejas
-//                   (ritmo, fuerza y MDF), la mediana de sus MDF es la referencia.
+//   CALIBRANDO      Cuenta repeticiones. Después de REF_REPS_OBSERVAR repeticiones,
+//                   la referencia es la mediana de la MDF de las primeras REF_REPS
+//                   repeticiones VÁLIDAS (ver "Repetición válida").
 //   MIDIENDO        Cada repetición se compara con la referencia y da un nivel de
 //                   fatiga: SIN_FATIGA, LEVE, MODERADA o ALTA.
 //   SIN_REFERENCIA  No logró calibrar en REF_INTENTOS_MAX repeticiones. Las
 //                   repeticiones se siguen contando.
 //
 // Procesamiento de cada muestra (igual al análisis en Python del grupo):
-//   1. Filtro pasabanda 30-450 Hz (Butterworth orden 4) + notch 50 Hz.
+//   1. Filtro pasabanda 20-450 Hz (Butterworth orden 4) + notch 50 Hz.
 //   2. Recorte de picos (ECG, golpes de cable): cada muestra se limita a
 //      ±RECORTE_K veces la escala de la señal (mediana de la RMS de los últimos
 //      10 bloques de 50 ms). Un pico ocupa 1 bloque y no mueve la mediana.
@@ -42,6 +43,13 @@
 //      caída % = 100 · (referencia − MDF actual) / referencia.
 //      El nivel sube si la caída supera el umbral FATIGA_CONFIRMAR_REPS
 //      repeticiones seguidas, y no baja dentro de la serie.
+//
+// Repetición válida (igual que los scripts de análisis del grupo):
+//   TODAS las repeticiones se cuentan. Pero solo las válidas entran en la
+//   referencia y en la recta de fatiga. Una repetición NO es válida si:
+//     - su RMS es menor que VALIDA_RMS_MIN veces la mediana de las RMS de la
+//       serie (acomodar el brazo, una repetición a medias, la última al soltar), o
+//     - saturó el ADC (VALIDA_SIN_SATURAR).
 
 #pragma once
 #include <math.h>
@@ -56,7 +64,8 @@ namespace fatiga {
 
 // ---- Señal ----
 constexpr float FS                 = 2000.0f;  // frecuencia de muestreo [Hz] (igual que el .ino)
-constexpr float FILTRO_F_BAJA      = 30.0f;    // pasaaltos [Hz] (30 Hz saca la mayor parte del ECG)
+constexpr float FILTRO_F_BAJA      = 20.0f;    // pasaaltos [Hz] (20 = scripts del grupo; 30 saca más ECG
+                                               //   pero también parte del sEMG, que en algunas personas está en 30-60 Hz)
 constexpr float FILTRO_F_ALTA      = 450.0f;   // pasabajos [Hz]
 constexpr bool  NOTCH_ACTIVO       = true;     // notch para la interferencia de la red
 constexpr float NOTCH_F            = 50.0f;    // [Hz]
@@ -94,8 +103,14 @@ constexpr float SAT_MIN_MV         = 10.0f;
 constexpr float SAT_MAX_MV         = 2500.0f;
 constexpr float SAT_FRACCION_MAX   = 0.02f;    // más del 2 % de muestras saturadas -> se marca
 
+// ---- Repetición válida (para la referencia y la fatiga; el conteo no cambia) ----
+constexpr float VALIDA_RMS_MIN       = 0.70f;  // RMS >= 70 % de la mediana de la serie
+constexpr bool  VALIDA_SIN_SATURAR   = true;   // las repeticiones saturadas no entran
+
 // ---- Referencia (calibración) ----
-constexpr int   REF_REPS             = 3;      // repeticiones que forman la referencia
+constexpr int   REF_REPS             = 3;      // repeticiones válidas que forman la referencia
+constexpr int   REF_REPS_OBSERVAR    = 5;      // se espera a tener 5 repeticiones para saber cuál es
+                                               //   la RMS "normal" y descartar las del arranque
 constexpr bool  REF_EXIGIR_PAREJAS   = false;  // false: la referencia sale de las primeras REF_REPS
                                                //        repeticiones, sin revisar ritmo, fuerza ni MDF
 constexpr int   REF_INTENTOS_MAX     = 8;      // si no calibra en 8 repeticiones -> SIN_REFERENCIA
@@ -128,6 +143,9 @@ constexpr int PUNTOS_REPOSO     = (int)(REPOSO_DURACION_S * FS) / ENV_PASO;   //
 constexpr int MUESTRAS_INFORME  = (int)(INFORME_PERIODO_S * FS);          // 1000
 constexpr int BLOQUES_SAT       = BUF_N / ENV_PASO;                       // 80
 static_assert((1 << LOG2_NFFT) == NFFT, "NFFT tiene que ser 2^LOG2_NFFT");
+static_assert(REF_REPS_OBSERVAR >= REF_REPS, "REF_REPS_OBSERVAR tiene que ser >= REF_REPS");
+static_assert(REF_INTENTOS_MAX >= REF_REPS_OBSERVAR, "REF_INTENTOS_MAX tiene que ser >= REF_REPS_OBSERVAR");
+static_assert(REF_REPS <= 16, "REF_REPS: la mediana corta admite hasta 16 valores");
 static_assert(MUESTRAS_ESPECTRO + ENV_PASO * BLOQUES_ENV < BUF_N, "el buffer no alcanza para la ventana");
 
 // =============================================================================
@@ -172,6 +190,7 @@ struct Resultado {
   uint8_t  repsCalibracion; // repeticiones usadas en la calibración hasta ahora
   bool     repNueva;        // este resultado trae una repetición nueva
   bool     saturada;        // esa repetición saturó el ADC
+  bool     repValida;       // esa repetición entra en la referencia / fatiga
   bool     contraido;       // la envolvente está por encima del umbral de reposo
   const char *evento;       // qué pasó (para el Serial); nullptr si es un resultado periódico
 };
@@ -331,8 +350,9 @@ private:
   uint16_t reps_ = 0;
   Repeticion ultima_ = {0, 0, 0, 0, false};
   bool repNueva_ = false;
-  Repeticion historial_[REF_REPS];
-  int nHistorial_ = 0;
+  Repeticion serie_[MAX_REPS_SERIE];      // todas las repeticiones de la serie
+  int nRepsSerie_ = 0;
+  bool ultimaValida_ = false;
   int intentosCalibracion_ = 0;
 
   // Fatiga
@@ -389,7 +409,7 @@ private:
     tUltimoPico_ = -1e9f; repPendiente_ = false;
     reps_ = 0; repNueva_ = false;
     memset(&ultima_, 0, sizeof(ultima_));
-    nHistorial_ = 0; intentosCalibracion_ = 0;
+    nRepsSerie_ = 0; ultimaValida_ = false; intentosCalibracion_ = 0;
     mdfRef_ = 0; nSerie_ = 0;
     mdfActual_ = 0; caida_ = 0; pendiente_ = 0; repsSobreUmbral_ = 0;
   }
@@ -509,21 +529,25 @@ private:
     ultima_ = r;
     repNueva_ = true;
 
-    const bool entraEnReferencia = REF_INCLUIR_PRIMERA || reps_ > 1;
-    if (entraEnReferencia) agregarAlHistorial(r);
+    if (nRepsSerie_ < MAX_REPS_SERIE) serie_[nRepsSerie_++] = r;
+    ultimaValida_ = esValida(r);
 
     switch (etapa_) {
       case Etapa::CALIBRANDO:
         evento_ = "calibrando";
-        if (entraEnReferencia) intentarCalibrar();
+        intentarCalibrar();
         break;
       case Etapa::SIN_REFERENCIA:
         evento_ = "repeticion (sin referencia)";
         break;
       default:                               // MIDIENDO
-        if (nSerie_ < MAX_REPS_SERIE) mdfSerie_[nSerie_++] = r.mdf;
-        actualizarFatiga();
-        evento_ = "repeticion";
+        if (ultimaValida_) {
+          if (nSerie_ < MAX_REPS_SERIE) mdfSerie_[nSerie_++] = r.mdf;
+          actualizarFatiga();
+          evento_ = "repeticion";
+        } else {
+          evento_ = "repeticion contada (incompleta o saturada: no entra en la fatiga)";
+        }
     }
     return true;
   }
@@ -554,12 +578,26 @@ private:
     return r;
   }
 
-  void agregarAlHistorial(const Repeticion &r) {   // guarda las últimas REF_REPS
-    if (nHistorial_ == REF_REPS) {
-      memmove(historial_, historial_ + 1, sizeof(Repeticion) * (REF_REPS - 1));
-      nHistorial_--;
+  // ===========================================================================
+  // Repetición válida
+  // ===========================================================================
+  // Mediana de las RMS de todas las repeticiones de la serie (hasta MAX_REPS_SERIE)
+  float rmsMedianaSerie() const {
+    float t[MAX_REPS_SERIE];
+    const int n = nRepsSerie_;
+    for (int i = 0; i < n; i++) {                        // inserción ordenada (n <= 100)
+      float v = serie_[i].rms;
+      int j = i - 1;
+      while (j >= 0 && t[j] > v) { t[j + 1] = t[j]; j--; }
+      t[j + 1] = v;
     }
-    historial_[nHistorial_++] = r;
+    if (n == 0) return 0;
+    return (n % 2) ? t[n / 2] : 0.5f * (t[n / 2 - 1] + t[n / 2]);
+  }
+
+  bool esValida(const Repeticion &r) const {
+    if (VALIDA_SIN_SATURAR && r.saturada) return false;
+    return r.rms >= VALIDA_RMS_MIN * rmsMedianaSerie();
   }
 
   // ===========================================================================
@@ -567,22 +605,36 @@ private:
   // ===========================================================================
   void intentarCalibrar() {
     intentosCalibracion_++;
-    if (intentosCalibracion_ >= REF_REPS && (!REF_EXIGIR_PAREJAS || repeticionesParejas())) {
-      fijarReferencia();
+    if (intentosCalibracion_ < REF_REPS_OBSERVAR) return;     // todavía junta repeticiones
+
+    int elegidas[REF_REPS];
+    const int n = elegirReferencia(elegidas);
+    if (n == REF_REPS && (!REF_EXIGIR_PAREJAS || repeticionesParejas(elegidas))) {
+      fijarReferencia(elegidas);
     } else if (intentosCalibracion_ >= REF_INTENTOS_MAX) {
       etapa_ = Etapa::SIN_REFERENCIA;
       evento_ = "no se pudo calibrar (las repeticiones se siguen contando): revisa electrodos y reinicia la serie";
+    } else {
+      evento_ = "calibrando: faltan repeticiones validas";
     }
   }
 
-  // ¿Las últimas REF_REPS tienen ritmo regular, fuerza pareja y MDF poco dispersa?
-  bool repeticionesParejas() {
-    if (nHistorial_ < REF_REPS) return false;
+  // Las primeras REF_REPS repeticiones válidas de la serie (índices en serie_)
+  int elegirReferencia(int *elegidas) const {
+    int n = 0;
+    for (int i = REF_INCLUIR_PRIMERA ? 0 : 1; i < nRepsSerie_ && n < REF_REPS; i++)
+      if (esValida(serie_[i])) elegidas[n++] = i;
+    return n;
+  }
+
+  // ¿Las repeticiones elegidas tienen ritmo regular, fuerza pareja y MDF poco dispersa?
+  bool repeticionesParejas(const int *elegidas) {
     float intervalos[REF_REPS], rms[REF_REPS], mdf[REF_REPS];
     for (int i = 0; i < REF_REPS; i++) {
-      if (i > 0) intervalos[i - 1] = historial_[i].t - historial_[i - 1].t;
-      rms[i] = historial_[i].rms;
-      mdf[i] = historial_[i].mdf;
+      const Repeticion &r = serie_[elegidas[i]];
+      if (i > 0) intervalos[i - 1] = r.t - serie_[elegidas[i - 1]].t;
+      rms[i] = r.rms;
+      mdf[i] = r.mdf;
     }
 
     const float intervaloMediano = mediana(intervalos, REF_REPS - 1);
@@ -614,11 +666,14 @@ private:
     return sqrtf(varianza / (n - 1)) / promedio;
   }
 
-  void fijarReferencia() {
+  void fijarReferencia(const int *elegidas) {
     float mdf[REF_REPS];
-    for (int i = 0; i < REF_REPS; i++) mdf[i] = historial_[i].mdf;
+    for (int i = 0; i < REF_REPS; i++) mdf[i] = serie_[elegidas[i]].mdf;
     mdfRef_ = mediana(mdf, REF_REPS);
-    for (int i = 0; i < REF_REPS; i++) mdfSerie_[nSerie_++] = mdf[i];   // empiezan la recta
+    // La recta empieza con todas las repeticiones válidas desde la primera elegida
+    nSerie_ = 0;
+    for (int i = elegidas[0]; i < nRepsSerie_; i++)
+      if (esValida(serie_[i]) && nSerie_ < MAX_REPS_SERIE) mdfSerie_[nSerie_++] = serie_[i].mdf;
     etapa_ = Etapa::MIDIENDO;
     nivel_ = Nivel::SIN_FATIGA;
     repsSobreUmbral_ = 0;
@@ -758,6 +813,7 @@ private:
     r.repsCalibracion = (uint8_t)intentosCalibracion_;
     r.repNueva = repNueva_;
     r.saturada = repNueva_ && ultima_.saturada;
+    r.repValida = repNueva_ && ultimaValida_;
     r.contraido = reposo_ > 0 && envolvente_ > REP_FACTOR_REPOSO * reposo_;
     r.evento = evento_;
     evento_ = nullptr;

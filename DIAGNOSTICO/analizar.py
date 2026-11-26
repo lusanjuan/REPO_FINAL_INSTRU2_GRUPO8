@@ -42,7 +42,7 @@ P_SIGNIFICATIVO = 0.05
 CRUDA_SI_MEDIANA_MAYOR_A_MV = 50   # si la señal no está centrada en 0, es la cruda del ADC: se filtra en la PC
 SATURACION_BAJA_MV = 10            # muestras crudas por debajo de esto = el ADC tocó el piso
 # Entrada cruda (CSV): mismos criterios que los scripts del grupo (analisis_repeticiones.py)
-BANDA_CRUDA_HZ = (20, 450)         # filtro y banda de MDF/MNF para la señal cruda (la ESP usa 30–450)
+BANDA_CRUDA_HZ = C.BANDA_HZ        # filtro y banda de MDF/MNF para la señal cruda (= la ESP)
 DESCARTAR_INCOMPLETAS = 0.7        # descarta reps con RMS < 70 % de la mediana (acomodar el brazo, reps a medias)
 EXCLUIR_POST_MARCA = True          # las reps después de la marca de fatiga del usuario no entran en la tendencia
 BANDA = list(C.BANDA_HZ)           # banda en uso (se cambia a BANDA_CRUDA_HZ si la entrada es cruda)
@@ -272,15 +272,15 @@ def analizar_reps(s, esp):
     return pd.DataFrame(filas)
 
 
-def depurar_reps(s, reps):
-    """Solo para la entrada cruda (sin ESP): como los scripts del grupo, saca las reps incompletas
-    y las posteriores a la marca de fatiga, y renumera."""
+def depurar_reps(s, reps, excluir_post_marca):
+    """Como la ESP y los scripts del grupo: saca de la tendencia las reps incompletas
+    (y, en la entrada cruda, las posteriores a la marca de fatiga) y renumera."""
     if reps.empty:
         return reps, {}
     rms_min = DESCARTAR_INCOMPLETAS * reps.rms.median()
     incompletas = reps.rms < rms_min
     post = pd.Series(False, index=reps.index)
-    if EXCLUIR_POST_MARCA and not s["marcas"].empty:
+    if excluir_post_marca and not s["marcas"].empty:
         post = reps.t_s > (s["marcas"].t_s.iloc[0] - s["t0"])
     quedan = reps[~incompletas & ~post].copy()
     quedan["rep"] = np.arange(1, len(quedan) + 1)
@@ -362,14 +362,14 @@ def conclusiones(res):
     k = res["conteo"]
     if k["esp"] is None:
         c.append(f"Repeticiones contadas en la PC: {k['pc']} (no hay datos de la ESP para comparar).")
-        dp = res.get("depuracion") or {}
-        if dp:
-            c.append(f"   Para el análisis se usan {dp['usadas']}: se descartaron {dp['incompletas']} incompletas "
-                     f"(RMS < {DESCARTAR_INCOMPLETAS:.0%} de la mediana) y {dp['post_marca']} posteriores a la marca de fatiga. "
-                     f"Banda {BANDA[0]}–{BANDA[1]} Hz.")
     else:
         c.append(f"Repeticiones: la ESP contó {k['esp']}, el conteo independiente {k['pc']} "
                  f"({k['coinciden']} coinciden a menos de {COINCIDENCIA_S} s).")
+    dp = res.get("depuracion") or {}
+    if dp:
+        c.append(f"   Para la tendencia se usan {dp['usadas']}: se descartaron {dp['incompletas']} incompletas "
+                 f"(RMS < {DESCARTAR_INCOMPLETAS:.0%} de la mediana) y {dp['post_marca']} posteriores a la marca de fatiga. "
+                 f"Banda {BANDA[0]}–{BANDA[1]} Hz.")
     if res.get("validacion"):
         v = res["validacion"]
         c.append(f"MDF ESP vs PC: diferencia media {v['mae_hz']} Hz (máxima {v['max_hz']} Hz) en {v['n']} repeticiones.")
@@ -585,9 +585,6 @@ def analizar(carpeta, graficos=True):
         esp = pd.DataFrame({"t": picos_pc, "serie": 1, "reps": np.arange(1, len(picos_pc) + 1),
                             "mdf": np.nan, "rms": np.nan, "estado": "", "fatiga": np.nan, "ref": np.nan})
     reps = analizar_reps(s, esp)
-    res["depuracion"] = {}
-    if not hay_esp:
-        reps, res["depuracion"] = depurar_reps(s, reps)
     coinciden = sum(np.min(np.abs(picos_pc - t)) < COINCIDENCIA_S for t in esp.t) if len(picos_pc) and len(esp) else 0
     res["conteo"] = {"esp": int(len(esp)) if hay_esp else None, "pc": int(len(picos_pc)),
                      "coinciden": int(coinciden) if hay_esp else None}
@@ -595,6 +592,8 @@ def analizar(carpeta, graficos=True):
     if len(v):
         dif = np.abs(v.mdf - v.mdf_esp)
         res["validacion"] = {"n": int(len(v)), "mae_hz": round(float(dif.mean()), 2), "max_hz": round(float(dif.max()), 2)}
+    # Igual que la ESP y los scripts del grupo: todas se cuentan, pero solo las válidas entran en la tendencia
+    reps, res["depuracion"] = depurar_reps(s, reps, excluir_post_marca=EXCLUIR_POST_MARCA and not hay_esp)
 
     res["series"] = []
     for numero, r in (reps.groupby("serie") if len(reps) else []):
