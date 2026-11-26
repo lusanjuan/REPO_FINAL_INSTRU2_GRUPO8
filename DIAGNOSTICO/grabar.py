@@ -185,6 +185,11 @@ class EnlaceBLE:
         self._cliente = None
 
     def mandar(self, cmd):
+        # Una tecla mantenida apretada repite el comando: se ignora el mismo comando dentro de 1,5 s
+        ahora = time.time()
+        if cmd == getattr(self, "_ultimo_cmd", None) and ahora - getattr(self, "_t_ultimo_cmd", 0) < 1.5:
+            return
+        self._ultimo_cmd, self._t_ultimo_cmd = cmd, ahora
         if self._loop and self._cliente:
             asyncio.run_coroutine_threadsafe(self._cliente.write_gatt_char(C.UUID_COMANDO, cmd, response=True),
                                              self._loop)
@@ -256,8 +261,12 @@ def mostrar(receptor, enlace):
     reps = [ax.axvline(np.nan, color=C.NARANJA, lw=1.6, animated=True) for _ in range(MAX_MARCAS_VISIBLES)]
     marcas = [ax.axvline(np.nan, color=C.CLARO, lw=1.4, ls="--", animated=True) for _ in range(MAX_MARCAS_VISIBLES)]
     fuerte = C.titulo_fuerte()
-    t_estado = fig.text(0.06, 0.885, "", fontsize=30, color=C.GRIS, animated=True, **fuerte)
-    t_datos = fig.text(0.06, 0.825, "", fontsize=13, color=C.CLARO, animated=True)
+    # Los textos que cambian van en un eje propio (invisible): el blitting solo redibuja ejes
+    cabecera = fig.add_axes([0.06, 0.8, 0.92, 0.12])
+    cabecera.set_axis_off()
+    t_estado = cabecera.text(0, 0.55, "", fontsize=30, color=C.GRIS, animated=True,
+                             transform=cabecera.transAxes, **fuerte)
+    t_datos = cabecera.text(0, 0.05, "", fontsize=13, color=C.CLARO, animated=True, transform=cabecera.transAxes)
     fig.text(0.98, 0.94, "N sesión nueva   S serie   X STOP   M marca   Q terminar", ha="right", fontsize=10, color=C.GRIS)
     ultimo_reescalado = [0.0]
 
@@ -295,7 +304,7 @@ def mostrar(receptor, enlace):
             t_estado.set_color(C.COLOR_ESTADO.get(j["estado"], C.GRIS))
             texto = f"{j['reps']} repeticiones   ·   serie {j['serie']}"
             if j.get("ref", 0) > 0:
-                texto += f"   ·   referencia {j['ref']:.1f} Hz   ·   caída MDF {j['fatiga']:.1f} %"
+                texto += f"   ·   referencia {j['ref']:.1f} Hz   ·   caída {j['fatiga']:.1f} %"
         else:
             t_estado.set_text(enlace.estado.upper())
             texto = ""

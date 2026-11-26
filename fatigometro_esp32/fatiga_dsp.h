@@ -583,6 +583,14 @@ private:
       minimo_ = v;
       repPendiente_ = true;                  // se analiza cuando estén los 0,75 s posteriores al pico
       nPico_ = muestraMaximo_;
+    } else if (cayo && !separada) {
+      // La envolvente ya cayó pero el máximo está a menos de REP_SEPARACION_MIN_S del pico
+      // anterior: es la misma contracción (o un rebote). Se descarta ese máximo y se vuelve a
+      // buscar un valle. Si no, el máximo quedaba guardado para siempre (su tiempo no cambia,
+      // así que nunca llega a estar "separado") y todos los picos siguientes, más chicos,
+      // nunca lo superaban: la ESP dejaba de contar repeticiones.
+      buscandoPico_ = false;
+      minimo_ = v;
     }
   }
 

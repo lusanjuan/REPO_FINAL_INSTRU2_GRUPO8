@@ -1,0 +1,7 @@
+Sesión 20261126_110519_iso_lu
+Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 11.5 s.
+Ruido de base (envolvente, percentil 10): 113.1 mV; contracción (percentil 95): 196.1 mV; SNR 4.8 dB.
+El recorte de picos tocó el 0.23 % de las muestras.
+Repeticiones contadas en la PC: 1 (no hay datos de la ESP para comparar).
+   Para la tendencia se usan 1: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.
+Serie 1 (1 reps): pocas repeticiones para calcular una tendencia.

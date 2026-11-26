@@ -1,0 +1,78 @@
+{
+  "sesion": "20261126_110410",
+  "meta": {
+    "etiqueta": "",
+    "persona": "",
+    "peso_kg": "",
+    "ejercicio": "curl de bíceps",
+    "notas": "",
+    "inicio": "2026-11-26T11:04:10",
+    "bloques_recibidos": 511,
+    "bloques_perdidos": 0,
+    "resultados_recibidos": 52,
+    "duracion_s": 45.7,
+    "fin": "2026-11-26T11:04:49"
+  },
+  "enlace": {
+    "duracion_s": 25.6,
+    "muestras_recibidas_pct": 100.0,
+    "huecos": 0,
+    "hueco_mas_largo_ms": 0.0
+  },
+  "ruido": {
+    "ruido_base_mV": 15.5,
+    "envolvente_p95_mV": 70.5,
+    "snr_dB": 13.1,
+    "reposo_esp_mV": 23.1,
+    "recortado_pct": 0.93,
+    "entrada_cruda": false,
+    "saturacion": null
+  },
+  "conteo": {
+    "esp": 1,
+    "pc": 5,
+    "coinciden": 0
+  },
+  "validacion": {
+    "n": 1,
+    "mae_hz": 0.05,
+    "max_hz": 0.05
+  },
+  "depuracion": {
+    "detectadas": 1,
+    "incompletas": 0,
+    "post_marca": 0,
+    "usadas": 1
+  },
+  "series": [
+    {
+      "serie": 1,
+      "reps": 1,
+      "mdf": null,
+      "mnf": null,
+      "rms": null,
+      "estado_final_esp": "calibrando",
+      "caida_final_esp": 0.0
+    }
+  ],
+  "isometrica": {
+    "pendiente_hz_por_s": -0.3549,
+    "r": -0.298,
+    "p": 0.202,
+    "mdf_inicio": 48.6,
+    "mdf_final": 41.7,
+    "caida_pct": 14.2,
+    "segundos_activos": 5.0
+  },
+  "marcas": [],
+  "conclusiones": [
+    "Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 25.6 s.",
+    "Ruido de base (envolvente, percentil 10): 15.5 mV; contracción (percentil 95): 70.5 mV; SNR 13.1 dB.",
+    "El recorte de picos tocó el 0.93 % de las muestras.",
+    "Repeticiones: la ESP contó 1, el conteo independiente 5 (0 coinciden a menos de 0.6 s).",
+    "   Para la tendencia se usan 1: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.",
+    "MDF ESP vs PC: diferencia media 0.05 Hz (máxima 0.05 Hz) en 1 repeticiones.",
+    "Serie 1 (1 reps): pocas repeticiones para calcular una tendencia.",
+    "Ventanas de 1 s (5.0 s con contracción): MDF 48.6 → 41.7 Hz, caída 14.2 %, pendiente -0.3549 Hz/s (r = -0.298, p = 0.202)."
+  ]
+}

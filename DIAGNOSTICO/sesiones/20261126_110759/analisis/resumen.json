@@ -1,0 +1,72 @@
+{
+  "sesion": "20261126_110759",
+  "meta": {
+    "etiqueta": "",
+    "persona": "",
+    "peso_kg": "",
+    "ejercicio": "curl de bíceps",
+    "notas": "",
+    "inicio": "2026-11-26T11:07:59",
+    "bloques_recibidos": 279,
+    "bloques_perdidos": 0,
+    "resultados_recibidos": 33,
+    "duracion_s": 251.5,
+    "fin": "2026-11-26T11:08:15"
+  },
+  "enlace": {
+    "duracion_s": 13.9,
+    "muestras_recibidas_pct": 100.0,
+    "huecos": 0,
+    "hueco_mas_largo_ms": 0.0
+  },
+  "ruido": {
+    "ruido_base_mV": 21.3,
+    "envolvente_p95_mV": 206.3,
+    "snr_dB": 19.7,
+    "reposo_esp_mV": 12.5,
+    "recortado_pct": 0.222,
+    "entrada_cruda": false,
+    "saturacion": null
+  },
+  "conteo": {
+    "esp": null,
+    "pc": 2,
+    "coinciden": null
+  },
+  "depuracion": {
+    "detectadas": 2,
+    "incompletas": 0,
+    "post_marca": 0,
+    "usadas": 2
+  },
+  "series": [
+    {
+      "serie": 1,
+      "reps": 2,
+      "mdf": null,
+      "mnf": null,
+      "rms": null,
+      "estado_final_esp": "—",
+      "caida_final_esp": NaN
+    }
+  ],
+  "isometrica": {
+    "pendiente_hz_por_s": -1.139,
+    "r": -0.194,
+    "p": 0.208,
+    "mdf_inicio": 128.9,
+    "mdf_final": 114.3,
+    "caida_pct": 11.3,
+    "segundos_activos": 11.0
+  },
+  "marcas": [],
+  "conclusiones": [
+    "Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 13.9 s.",
+    "Ruido de base (envolvente, percentil 10): 21.3 mV; contracción (percentil 95): 206.3 mV; SNR 19.7 dB.",
+    "El recorte de picos tocó el 0.222 % de las muestras.",
+    "Repeticiones contadas en la PC: 2 (no hay datos de la ESP para comparar).",
+    "   Para la tendencia se usan 2: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.",
+    "Serie 1 (2 reps): pocas repeticiones para calcular una tendencia.",
+    "Ventanas de 1 s (11.0 s con contracción): MDF 128.9 → 114.3 Hz, caída 11.3 %, pendiente -1.139 Hz/s (r = -0.194, p = 0.208)."
+  ]
+}

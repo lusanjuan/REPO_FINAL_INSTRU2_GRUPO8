@@ -1,0 +1,63 @@
+{
+  "sesion": "20261126_110519_iso_lu",
+  "meta": {
+    "etiqueta": "iso_lu",
+    "persona": "Lu",
+    "peso_kg": "4",
+    "ejercicio": "isometrico 90 grados",
+    "notas": "",
+    "inicio": "2026-11-26T11:05:19",
+    "bloques_recibidos": 230,
+    "bloques_perdidos": 0,
+    "resultados_recibidos": 24,
+    "duracion_s": 89.0,
+    "fin": "2026-11-26T11:05:32"
+  },
+  "enlace": {
+    "duracion_s": 11.5,
+    "muestras_recibidas_pct": 100.0,
+    "huecos": 0,
+    "hueco_mas_largo_ms": 0.0
+  },
+  "ruido": {
+    "ruido_base_mV": 113.1,
+    "envolvente_p95_mV": 196.1,
+    "snr_dB": 4.8,
+    "reposo_esp_mV": 23.1,
+    "recortado_pct": 0.23,
+    "entrada_cruda": false,
+    "saturacion": null
+  },
+  "conteo": {
+    "esp": null,
+    "pc": 1,
+    "coinciden": null
+  },
+  "depuracion": {
+    "detectadas": 1,
+    "incompletas": 0,
+    "post_marca": 0,
+    "usadas": 1
+  },
+  "series": [
+    {
+      "serie": 1,
+      "reps": 1,
+      "mdf": null,
+      "mnf": null,
+      "rms": null,
+      "estado_final_esp": "—",
+      "caida_final_esp": NaN
+    }
+  ],
+  "isometrica": null,
+  "marcas": [],
+  "conclusiones": [
+    "Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 11.5 s.",
+    "Ruido de base (envolvente, percentil 10): 113.1 mV; contracción (percentil 95): 196.1 mV; SNR 4.8 dB.",
+    "El recorte de picos tocó el 0.23 % de las muestras.",
+    "Repeticiones contadas en la PC: 1 (no hay datos de la ESP para comparar).",
+    "   Para la tendencia se usan 1: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.",
+    "Serie 1 (1 reps): pocas repeticiones para calcular una tendencia."
+  ]
+}

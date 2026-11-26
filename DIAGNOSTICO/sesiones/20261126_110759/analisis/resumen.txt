@@ -1,0 +1,8 @@
+Sesión 20261126_110759
+Enlace: llegó el 100.0 % de la señal (0 huecos, el más largo de 0 ms) en 13.9 s.
+Ruido de base (envolvente, percentil 10): 21.3 mV; contracción (percentil 95): 206.3 mV; SNR 19.7 dB.
+El recorte de picos tocó el 0.222 % de las muestras.
+Repeticiones contadas en la PC: 2 (no hay datos de la ESP para comparar).
+   Para la tendencia se usan 2: se descartaron 0 incompletas (RMS < 70% de la mediana) y 0 posteriores a la marca de fatiga. Banda 20–450 Hz.
+Serie 1 (2 reps): pocas repeticiones para calcular una tendencia.
+Ventanas de 1 s (11.0 s con contracción): MDF 128.9 → 114.3 Hz, caída 11.3 %, pendiente -1.139 Hz/s (r = -0.194, p = 0.208).

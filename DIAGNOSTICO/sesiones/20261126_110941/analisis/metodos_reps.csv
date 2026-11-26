@@ -1,0 +1,9 @@
+mdf,mnf,mdf_l,mnf_l,rms,frac_baja,snr,sat,t_s,calidad_ok,caida_M0_MDF,caida_M0_MNF,caida_M0_MDF+MNF,valida_M0,caida_M0_MDF o MNF,caida_M1_MDF,caida_M1_MNF,caida_M1_MDF+MNF,valida_M1,caida_M1_MDF o MNF,caida_M2_MDF,caida_M2_MNF,caida_M2_MDF+MNF,valida_M2,caida_M2_MDF o MNF,caida_M3_MDF,caida_M3_MNF,caida_M3_MDF+MNF,valida_M3,caida_M3_MDF o MNF,caida_M4_MDF,caida_M4_MNF,caida_M4_MDF+MNF,valida_M4,caida_M4_MDF o MNF,caida_M5_MDF,caida_M5_MNF,caida_M5_MDF+MNF,valida_M5,caida_M5_MDF o MNF
+100.017,120.327,99.807,119.223,160.86,0.026,14.726,0.0,17.625,True,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,
+100.489,134.831,100.587,135.945,185.599,0.004,16.99,0.0,19.825,True,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,
+50.708,65.145,50.569,65.099,127.286,0.114,11.652,0.0,23.125,True,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,
+58.785,93.37,58.941,93.481,102.589,0.031,9.391,0.0,28.525,True,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,,,,,True,
+96.98,109.071,96.883,108.799,149.065,0.013,13.646,0.0,32.6,True,28.17,33.92,28.17,True,33.92,3.86,27.07,3.86,True,27.07,3.86,27.07,3.86,True,27.07,3.86,27.07,3.86,True,27.07,3.94,26.81,3.94,True,26.81,3.94,26.81,3.94,True,26.81
+96.416,104.0,96.537,104.333,206.579,0.107,18.911,0.0,36.4,True,17.58,29.92,17.58,True,29.92,3.68,19.38,3.68,True,19.38,3.6,19.38,3.6,True,19.38,3.6,19.38,3.6,True,19.38,3.28,17.84,3.28,True,17.84,3.28,17.84,3.28,True,17.84
+89.201,98.806,88.143,98.104,164.27,0.026,15.038,0.0,40.0,True,14.75,30.27,14.75,True,30.27,4.55,25.55,4.55,True,25.55,4.55,25.55,4.55,True,25.55,4.55,25.55,4.55,True,25.55,4.39,25.31,4.39,True,25.31,4.39,25.31,4.39,True,25.31
+100.146,133.46,100.243,134.758,165.595,0.001,15.159,0.0,42.45,True,8.43,13.2,8.43,True,13.2,3.37,14.02,3.37,True,14.02,0.14,-7.69,-7.69,True,0.14,0.14,-7.69,-7.69,True,0.14,-0.02,-6.49,-6.49,True,-0.02,-0.02,-6.49,-6.49,True,-0.02
